@@ -2,7 +2,7 @@ using System;
 
 namespace Open.HttpProxy
 {
-    class HttpRequestHeaders : HttpHeaders
+    public class HttpRequestHeaders : HttpHeaders
     {
         public string Host { get { return this["Host"]; }}
 

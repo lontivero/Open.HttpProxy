@@ -82,6 +82,11 @@ namespace Open.HttpProxy
             return TaskUtils.CancelledTask<int>();
         }
 
+        public override void Close()
+        {
+            base.Close();
+            _connection.Close();
+        }
     }
 
     static class TaskUtils

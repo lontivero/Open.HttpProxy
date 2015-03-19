@@ -11,23 +11,9 @@ namespace Open.HttpProxy
             _session = session;
         }
 
+        public StatusLine StatusLine { get; set; }
         public HTTPResponseHeaders Headers { get; set; }
 
-        public int StatusCode
-        {
-            get;
-            set;
-        }
-
-        public string StatusCodeDescription
-        {
-            get;
-            set;
-        }
-
-        public byte[] ToByteArray()
-        {
-            return new byte[0];
-        }
+        public string Body { get { return string.Empty; } }
     }
 }

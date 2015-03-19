@@ -23,8 +23,9 @@
 
 using System;
 using System.Threading.Tasks;
+using Open.Tcp;
 
-namespace Open.Tcp.BufferManager
+namespace Open.HttpProxy.BufferManager
 {
     public class BufferAllocator : IBufferAllocator
     {

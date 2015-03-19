@@ -1,7 +1,6 @@
-﻿using System.Threading.Tasks;
-using Open.Tcp;
-using Open.Tcp.BufferManager;
-using Open.Tcp.EventArgs;
+﻿using Open.HttpProxy.BufferManager;
+using Open.HttpProxy.EventArgs;
+using Open.HttpProxy.Listeners;
 
 namespace Open.HttpProxy
 {
@@ -22,6 +21,8 @@ namespace Open.HttpProxy
         {
             var session = new Session(e.Connection, _bufferAllocator);
             await session.ReceiveRequestAsync();
+            await session.ResendRequestAsync();
+            //await session.ClientHandler.BuildAndReturnResponseAsync(404, "Not Found");
         }
 
         public void Start()

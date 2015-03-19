@@ -12,8 +12,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{CBFBFE
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProxyTest", "ProxyTest\ProxyTest.csproj", "{2A105556-6384-4907-9AAC-5295E04A12C6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Open.Tcp", "Open.Tcp\Open.Tcp.csproj", "{4F5330BB-6BE3-48A2-903D-A492BE05B2AB}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -28,10 +26,6 @@ Global
 		{2A105556-6384-4907-9AAC-5295E04A12C6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2A105556-6384-4907-9AAC-5295E04A12C6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2A105556-6384-4907-9AAC-5295E04A12C6}.Release|Any CPU.Build.0 = Release|Any CPU
-		{4F5330BB-6BE3-48A2-903D-A492BE05B2AB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4F5330BB-6BE3-48A2-903D-A492BE05B2AB}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{4F5330BB-6BE3-48A2-903D-A492BE05B2AB}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4F5330BB-6BE3-48A2-903D-A492BE05B2AB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

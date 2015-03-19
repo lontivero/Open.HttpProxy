@@ -53,6 +53,7 @@ namespace Open.Tcp
 
         protected override void Notify(SocketAsyncEventArgs saea)
         {
+            saea.AcceptSocket.NoDelay = true;
             var connection = new Connection(saea.AcceptSocket);
             Events.Raise(ConnectionRequested, this, new ConnectionEventArgs(connection));
         }

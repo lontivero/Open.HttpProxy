@@ -101,14 +101,20 @@ namespace Open.HttpProxy
             _headers[key] = value ?? string.Empty;
         }
 
-        public byte[] ToByteArray()
+        internal void AddLine(string line)
+        {
+            var i = line.IndexOf(':');
+            Add(line.Substring(0, i), line.Substring(i + 2));
+        }
+
+        public char[] ToCharArray()
         {
             var sb = new StringBuilder(50* _headers.Count);
             foreach (var header in _headers)
             {
                 sb.AppendFormat("{0}: {1}\r\n", header.Key, header.Value);
             }
-            return Encoding.ASCII.GetBytes(sb.ToString());
+            return sb.ToString().ToCharArray();
         }
     }
 }

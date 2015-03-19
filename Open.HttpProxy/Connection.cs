@@ -25,14 +25,14 @@ using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
+using Open.Tcp;
 using Open.Tcp.Utils;
 
-
-namespace Open.Tcp
+namespace Open.HttpProxy
 {
     public class Connection
     {
-        private static readonly BlockingPool<SocketAwaitable> AwaitableSocketPool =
+        internal static readonly BlockingPool<SocketAwaitable> AwaitableSocketPool =
             new BlockingPool<SocketAwaitable>(() => new SocketAwaitable(new SocketAsyncEventArgs()));
 
         private readonly Socket _socket;

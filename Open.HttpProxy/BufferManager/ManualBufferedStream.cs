@@ -1,10 +1,9 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Open.Tcp.BufferManager
+namespace Open.HttpProxy.BufferManager
 {
     public sealed class ManualBufferedStream : Stream {
         private readonly Stream _s;         

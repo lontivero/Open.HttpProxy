@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
@@ -37,6 +38,10 @@ namespace Open.HttpProxy
             while (_lineState != LineState.LF)
             {
                 var b = await ReadByteAsync();
+                if(b == -1)
+                {
+                    throw new Exception();
+                }
                 if (b == 13)
                 {
                     _lineState = LineState.CR;
