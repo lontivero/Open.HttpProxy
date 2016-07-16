@@ -2,7 +2,7 @@
 // - Connection.cs
 // 
 // Author:
-//     Lucas Ontivero <lucasontivero@gmail.com>
+//	 Lucas Ontivero <lucasontivero@gmail.com>
 // 
 // Copyright 2013 Lucas E. Ontivero
 // 
@@ -25,101 +25,92 @@ using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
-using Open.Tcp;
-using Open.Tcp.Utils;
 
 namespace Open.HttpProxy
 {
-    public class Connection
-    {
-        internal static readonly BlockingPool<SocketAwaitable> AwaitableSocketPool =
-            new BlockingPool<SocketAwaitable>(() => new SocketAwaitable(new SocketAsyncEventArgs()));
+	using Utils;
+	
+	public class Connection
+	{
+		internal static readonly BlockingPool<SocketAwaitable> AwaitableSocketPool =
+			new BlockingPool<SocketAwaitable>(() => new SocketAwaitable(new SocketAsyncEventArgs()));
 
-        private readonly Socket _socket;
-        private readonly IPEndPoint _endpoint;
-        private readonly Uri _uri;
-        private bool _socketDisposed;
+		private readonly Socket _socket;
+		private readonly IPEndPoint _endpoint;
+		private readonly Uri _uri;
+		private bool _socketDisposed;
 
-        public IPEndPoint Endpoint
-        {
-            get { return _endpoint; }
-        }
+		public IPEndPoint Endpoint => _endpoint;
 
-        public Uri Uri
-        {
-            get { return _uri; }
-        }
+	    public Uri Uri => _uri;
 
-        public bool IsConnected
-        {
-            get { return _socket.Connected; }
-        }
+	    public bool IsConnected => _socket.Connected;
 
-        internal Connection(IPEndPoint endpoint)
-            : this(new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp), endpoint)
-        {}
+	    internal Connection(IPEndPoint endpoint)
+			: this(new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp), endpoint)
+		{}
 
-        internal Connection(Socket socket)
-            : this(socket, (IPEndPoint)socket.RemoteEndPoint)
-        {}
+		internal Connection(Socket socket)
+			: this(socket, (IPEndPoint)socket.RemoteEndPoint)
+		{}
 
-        internal Connection(Socket socket, IPEndPoint endpoint)
-        {
-            _socket = socket;
-            _endpoint = endpoint;
-            _socketDisposed = false;
-            _uri = new Uri("tcp://" + _endpoint.Address + ':' + _endpoint.Port);
-        }
+		internal Connection(Socket socket, IPEndPoint endpoint)
+		{
+			_socket = socket;
+			_endpoint = endpoint;
+			_socketDisposed = false;
+			_uri = new Uri("tcp://" + _endpoint.Address + ':' + _endpoint.Port);
+		}
 
 
-        public async Task<int> ReceiveAsync(byte[] array, int offset, int count)
-        {
-            var awaitableSocket = AwaitableSocketPool.Take();
-            awaitableSocket.EventArgs.SetBuffer(array, offset, count);
+		public async Task<int> ReceiveAsync(byte[] array, int offset, int count)
+		{
+			var awaitableSocket = AwaitableSocketPool.Take();
+			awaitableSocket.EventArgs.SetBuffer(array, offset, count);
 
-            try
-            {
-                await _socket.ReceiveAsync(awaitableSocket);
-                int bytesRead = awaitableSocket.EventArgs.BytesTransferred;
-                return bytesRead;
-            }
-            finally
-            {
-                AwaitableSocketPool.Add(awaitableSocket);
-            }
-        }
+			try
+			{
+				await _socket.ReceiveAsync(awaitableSocket);
+				var bytesRead = awaitableSocket.EventArgs.BytesTransferred;
+				return bytesRead;
+			}
+			finally
+			{
+				AwaitableSocketPool.Add(awaitableSocket);
+			}
+		}
 
-        public async Task<int> SendAsync(byte[] array, int offset, int count)
-        {
-            var awaitableSocket = AwaitableSocketPool.Take();
-            awaitableSocket.EventArgs.SetBuffer(array, offset, count);
+		public async Task<int> SendAsync(byte[] array, int offset, int count)
+		{
+			var awaitableSocket = AwaitableSocketPool.Take();
+			awaitableSocket.EventArgs.SetBuffer(array, offset, count);
 
-            try
-            {
-                await _socket.SendAsync(awaitableSocket);
-                int bytesWrite = awaitableSocket.EventArgs.BytesTransferred;
-                return bytesWrite;
-            }
-            finally
-            {
-                AwaitableSocketPool.Add(awaitableSocket);
-            }
-        }
+			try
+			{
+				await _socket.SendAsync(awaitableSocket);
+				var bytesWrite = awaitableSocket.EventArgs.BytesTransferred;
+				return bytesWrite;
+			}
+			finally
+			{
+				AwaitableSocketPool.Add(awaitableSocket);
+			}
+		}
 
-        public async Task ConnectAsync()
-        {
-            //if (_socketDisposed){ callback(false); return;}
+		public async Task ConnectAsync()
+		{
+			//if (_socketDisposed){ callback(false); return;}
 
-            var awaitableSocket = AwaitableSocketPool.Take();
-            awaitableSocket.EventArgs.RemoteEndPoint = Endpoint;
+			var awaitableSocket = AwaitableSocketPool.Take();
+			awaitableSocket.EventArgs.RemoteEndPoint = Endpoint;
 
-            await _socket.ConnectAsync(awaitableSocket);
-        }
+			await _socket.ConnectAsync(awaitableSocket);
+		}
 
-        public void Close()
-        {
-            _socket.Close();
-            _socketDisposed = true;
-        }
-    }
+		public void Close()
+		{
+			_socket.Close();
+			_socketDisposed = true;
+		}
+	}
 }

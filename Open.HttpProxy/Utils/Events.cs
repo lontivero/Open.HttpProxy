@@ -2,7 +2,7 @@
 // - Events.cs
 // 
 // Author:
-//     Lucas Ontivero <lucasontivero@gmail.com>
+//	 Lucas Ontivero <lucasontivero@gmail.com>
 // 
 // Copyright 2013 Lucas E. Ontivero
 // 
@@ -24,27 +24,19 @@
 using System;
 using System.Threading.Tasks;
 
-namespace Open.Tcp.Utils
+namespace Open.HttpProxy.Utils
 {
-    internal static class Events
-    {
-        internal static void RaiseAsync<T>(EventHandler<T> handler, object sender, T args) where T : System.EventArgs
-        {
-            Task.Factory.StartNew(() =>
-                {
-                    if (handler != null)
-                    {
-                        handler(sender, args);
-                    }
-                });
-        }
+    static class Events
+	{
+		internal static void RaiseAsync<T>(EventHandler<T> handler, object sender, T args) where T : System.EventArgs
+		{
+		    if (handler == null) return; 
+			Task.Factory.StartNew(() => handler.Invoke(sender, args));
+		}
 
-        internal static void Raise<T>(EventHandler<T> handler, object sender, T args) where T : System.EventArgs
-        {
-            if (handler != null)
-            {
-                handler(sender, args);
-            }
-        }
-    }
+		internal static void Raise<T>(EventHandler<T> handler, object sender, T args) where T : System.EventArgs
+		{
+		    handler?.Invoke(sender, args);
+		}
+	}
 }

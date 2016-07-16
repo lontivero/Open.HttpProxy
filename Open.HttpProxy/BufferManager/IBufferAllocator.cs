@@ -2,7 +2,7 @@
 // - IBufferAllocator.cs
 // 
 // Author:
-//     Lucas Ontivero <lucasontivero@gmail.com>
+//	 Lucas Ontivero <lucasontivero@gmail.com>
 // 
 // Copyright 2013 Lucas E. Ontivero
 // 
@@ -26,9 +26,9 @@ using System.Threading.Tasks;
 
 namespace Open.HttpProxy.BufferManager
 {
-    public interface IBufferAllocator
-    {
-        Task<ArraySegment<byte>> AllocateAsync(int size);
-        void Free(ArraySegment<byte> _buffer);
-    }
+	public interface IBufferAllocator
+	{
+		Task<ArraySegment<byte>> AllocateAsync(int sizeBytes);
+		void Free(ArraySegment<byte> buffer);
+	}
 }

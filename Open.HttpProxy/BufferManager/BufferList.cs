@@ -2,7 +2,7 @@
 // - Buffer.cs
 // 
 // Author:
-//     Lucas Ontivero <lucasontivero@gmail.com>
+//	 Lucas Ontivero <lucasontivero@gmail.com>
 // 
 // Copyright 2013 Lucas E. Ontivero
 // 
@@ -26,52 +26,44 @@ using System.Collections.Generic;
 
 namespace Open.HttpProxy.BufferManager
 {
-    public class BufferList
-    {
-        private readonly List<ArraySegment<byte>> _listOf_buffers;
-        private int _size;
+	using Utils;
 
-        public BufferList()
-        {
-            _listOf_buffers = new List<ArraySegment<byte>> ();
-            _size = 0;
-        }
+	public class BufferList
+	{
+		private readonly List<ArraySegment<byte>> _buffers;
+		private int _size;
 
-        public BufferList(ArraySegment<byte> _buffer)
-        {
-            _listOf_buffers = new List<ArraySegment<byte>> { _buffer };
-            _size = _buffer.Count;
-        }
+		public BufferList()
+		{
+			_buffers = new List<ArraySegment<byte>> ();
+			_size = 0;
+		}
 
-        public void Add(ArraySegment<byte> _buffer)
-        {
-            _listOf_buffers.Add(_buffer);
-            _size += _buffer.Count;
-        }
+		public BufferList(ArraySegment<byte> buffer)
+		{
+			_buffers = new List<ArraySegment<byte>> { buffer };
+			_size = buffer.Count;
+		}
 
-        public void CopyTo(byte[] array)
-        {
-            Tcp.Utils.Guard.IsGreaterOrEqualTo(array.Length, Capacity, "array too small to copy buffer");
-            foreach (var _buffer in _listOf_buffers)
-            {
-                Buffer.BlockCopy(_buffer.Array, _buffer.Offset, array, 0, _buffer.Count);
-            }
-        }
+		public void Add(ArraySegment<byte> buffer)
+		{
+			_buffers.Add(buffer);
+			_size += buffer.Count;
+		}
 
-        public ArraySegment<byte> this[int i]
-        {
-            get { return _listOf_buffers[i]; }
-        } 
-        
-        public int Capacity
-        {
-            get { return _size; }
-        }
+		public void CopyTo(byte[] array)
+		{
+			Guard.IsGreaterOrEqualTo(array.Length, Capacity, "array too small to copy buffer");
+			foreach (var buffer in _buffers)
+			{
+				Buffer.BlockCopy(buffer.Array, buffer.Offset, array, 0, buffer.Count);
+			}
+		}
 
-        public int BufferCount
-        {
-            get { return _listOf_buffers.Count; }
-        }
+		public ArraySegment<byte> this[int i] => _buffers[i];
 
-    }
+	    public int Capacity => _size;
+
+	    public int BufferCount => _buffers.Count;
+	}
 }
