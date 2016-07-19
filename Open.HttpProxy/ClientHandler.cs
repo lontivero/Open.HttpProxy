@@ -39,14 +39,14 @@ namespace Open.HttpProxy
 			}
 		}
 
-        public async Task ReceiveBodyAsync()
-        {
-            var stream = await _session.Request.GetContentStreamAsync();
-            var reader = new StreamReader(stream);
-            _session.Request.Body = await reader.ReadToEndAsync();
-        }
+		public async Task ReceiveBodyAsync()
+		{
+			var stream = await _session.Request.GetContentStreamAsync();
+			var reader = new StreamReader(stream);
+			_session.Request.Body = await reader.ReadToEndAsync();
+		}
 
-        internal async Task<Stream> GetRequestStreamAsync(int contentLenght)
+		internal async Task<Stream> GetRequestStreamAsync(int contentLenght)
 		{
 			var result = new MemoryStream();
 			var writer = new StreamWriter(result);
@@ -123,7 +123,7 @@ namespace Open.HttpProxy
 
 		public async Task BuildAndReturnResponseAsync(int code, string description)
 		{
-			_session.Response.Headers = new HTTPResponseHeaders();
+			_session.Response.Headers = new HttpResponseHeaders();
 			_session.Response.StatusLine = new StatusLine(code.ToString(), description);
 			_session.Response.Headers.Add("Date", DateTime.UtcNow.ToString("r"));
 			_session.Response.Headers.Add("Content-Type", "text/html; charset=UTF-8");
@@ -131,5 +131,15 @@ namespace Open.HttpProxy
 			_session.Response.Headers.Add("Timestamp", DateTime.UtcNow.ToString("HH:mm:ss.fff"));
 			await _session.ReturnResponse();
 		}
-    }
+
+		public Task SendEntityAsync()
+		{
+			throw new NotImplementedException();
+		}
+
+		public Task SendBodyAsync()
+		{
+			throw new NotImplementedException();
+		}
+	}
 }

@@ -3,11 +3,11 @@ using System.Threading.Tasks;
 
 namespace Open.HttpProxy
 {
-	internal class Request
+	public class Request
 	{
 		private readonly Session _session;
 
-	    public RequestLine RequestLine { get; set; }
+		public RequestLine RequestLine { get; set; }
 
 		public Request(Session session)
 		{
@@ -16,9 +16,9 @@ namespace Open.HttpProxy
 
 		public HttpRequestHeaders Headers { get; } = new HttpRequestHeaders();
 
-        public string Body { get; set; }
+		public string Body { get; set; }
 
-	    public async Task<Stream> GetContentStreamAsync()
+		public async Task<Stream> GetContentStreamAsync()
 		{
 			var contentLenght = _session.Request.Headers.ContentLength;
 			if( !contentLenght.HasValue || contentLenght.Value == 0) return new MemoryStream(0);
@@ -41,9 +41,9 @@ namespace Open.HttpProxy
 			Version = line.Substring(ils + 1);
 		}
 
-	    public override string ToString()
-	    {
-	        return $"{Verb} {Uri} {Version}";
-	    }
+		public override string ToString()
+		{
+			return $"{Verb} {Uri} {Version}";
+		}
 	}
 }

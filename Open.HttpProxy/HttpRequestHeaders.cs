@@ -6,21 +6,21 @@ namespace Open.HttpProxy
 	{
 		public string Host => this["Host"];
 
-	    public string Accept => this["Accept"];
+		public string Accept => this["Accept"];
 
-	    public Uri Referer => new Uri(this["Referer"]);
+		public Uri Referer => new Uri(this["Referer"]);
 
-	    public string AcceptCharset => this["Accept-Charset"];
+		public string AcceptCharset => this["Accept-Charset"];
 
-	    public string AcceptEncoding => this["Accept-Encoding"];
+		public string AcceptEncoding => this["Accept-Encoding"];
 
-	    public string AcceptLanguage => this["Accept-Language"];
+		public string AcceptLanguage => this["Accept-Language"];
 
-	    public string Authorization => this["Authorization"];
+		public string Authorization => this["Authorization"];
 
-	    public string Expect => this["Expect"];
+		public string Expect => this["Expect"];
 
-	    public bool? ExpectContinue 
+		public bool? ExpectContinue 
 		{
 			get
 			{
@@ -30,7 +30,7 @@ namespace Open.HttpProxy
 		}
 	}
 
-	class HTTPResponseHeaders : HttpHeaders
+	public class HttpResponseHeaders : HttpHeaders
 	{
 	}
 }

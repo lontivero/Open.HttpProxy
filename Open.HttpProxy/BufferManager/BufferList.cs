@@ -62,8 +62,8 @@ namespace Open.HttpProxy.BufferManager
 
 		public ArraySegment<byte> this[int i] => _buffers[i];
 
-	    public int Capacity => _size;
+		public int Capacity => _size;
 
-	    public int BufferCount => _buffers.Count;
+		public int BufferCount => _buffers.Count;
 	}
 }

@@ -20,12 +20,12 @@ namespace Open.HttpProxy.Listeners
 		private static readonly BlockingPool<SocketAsyncEventArgs> ConnectSaeaPool =
 			new BlockingPool<SocketAsyncEventArgs>(() => new SocketAsyncEventArgs());
 
-        private readonly IPEndPoint _endPoint;
-        private Socket _listener;
-	    private ListenerStatus _status;
-        public int Port { get; }
+		private readonly IPEndPoint _endPoint;
+		private Socket _listener;
+		private ListenerStatus _status;
+		public int Port { get; }
 
-        public TcpListener(int port)
+		public TcpListener(int port)
 		{
 			Port = port;
 			_status = ListenerStatus.Stopped;
@@ -36,10 +36,14 @@ namespace Open.HttpProxy.Listeners
 
 		public ListenerStatus Status => _status;
 
-	    public EndPoint Endpoint => _endPoint;
+		public EndPoint Endpoint => _endPoint;
 
-	    public void Start()
+		public void Start()
 		{
+			if (Status == ListenerStatus.Listening)
+			{
+				throw new InvalidOperationException("Already listing");
+			}
 			try
 			{
 				_listener = CreateSocket();

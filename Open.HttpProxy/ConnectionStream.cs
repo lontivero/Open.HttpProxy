@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 namespace Open.HttpProxy
 {
-    internal class ConnectionStream : Stream
+	internal class ConnectionStream : Stream
 	{
 		private readonly Connection _connection;
 
@@ -38,11 +38,11 @@ namespace Open.HttpProxy
 
 		public override bool CanRead => true;
 
-        public override bool CanSeek => false;
+		public override bool CanSeek => false;
 
-        public override bool CanWrite => true;
+		public override bool CanWrite => true;
 
-        public override long Length
+		public override long Length
 		{
 			get { throw new NotSupportedException(); }
 		}
@@ -55,19 +55,19 @@ namespace Open.HttpProxy
 
 		public override Task<int> ReadAsync(byte[] buffer, int offset, int count, System.Threading.CancellationToken cancellationToken)
 		{
-		    return !cancellationToken.IsCancellationRequested
-		        ? _connection.ReceiveAsync(buffer, offset, count)
-		        : Task.FromCanceled<int>(cancellationToken);
+			return !cancellationToken.IsCancellationRequested
+				? _connection.ReceiveAsync(buffer, offset, count)
+				: Task.FromCanceled<int>(cancellationToken);
 		}
 
-        public override Task WriteAsync(byte[] buffer, int offset, int count, System.Threading.CancellationToken cancellationToken)
-        {
-            return !cancellationToken.IsCancellationRequested 
-                ? _connection.SendAsync(buffer, offset, count)
-                : Task.FromCanceled<int>(cancellationToken);
-        }
+		public override Task WriteAsync(byte[] buffer, int offset, int count, System.Threading.CancellationToken cancellationToken)
+		{
+			return !cancellationToken.IsCancellationRequested 
+				? _connection.SendAsync(buffer, offset, count)
+				: Task.FromCanceled<int>(cancellationToken);
+		}
 
-        public override void Close()
+		public override void Close()
 		{
 			base.Close();
 			_connection.Close();

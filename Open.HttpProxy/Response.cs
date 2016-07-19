@@ -1,7 +1,7 @@
 
 namespace Open.HttpProxy
 {
-	internal class Response
+	public class Response
 	{
 		private readonly Session _session;
 
@@ -11,8 +11,8 @@ namespace Open.HttpProxy
 		}
 
 		public StatusLine StatusLine { get; set; }
-		public HTTPResponseHeaders Headers { get; set; }
+		public HttpResponseHeaders Headers { get; set; }
 
-		public string Body { get { return string.Empty; } }
+		public string Body => string.Empty;
 	}
 }

@@ -42,11 +42,11 @@ namespace Open.HttpProxy
 
 		public IPEndPoint Endpoint => _endpoint;
 
-	    public Uri Uri => _uri;
+		public Uri Uri => _uri;
 
-	    public bool IsConnected => _socket.Connected;
+		public bool IsConnected => _socket.Connected;
 
-	    internal Connection(IPEndPoint endpoint)
+		internal Connection(IPEndPoint endpoint)
 			: this(new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp), endpoint)
 		{}
 

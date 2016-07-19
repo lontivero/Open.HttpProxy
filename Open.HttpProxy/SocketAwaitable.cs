@@ -20,8 +20,8 @@ namespace Open.HttpProxy
 			EventArgs = eventArgs;
 			EventArgs.Completed += (sender, args) =>
 			{
-			    var prev = Continuation ?? Interlocked.CompareExchange(ref Continuation, Sentinel, null);
-			    prev?.Invoke();
+				var prev = Continuation ?? Interlocked.CompareExchange(ref Continuation, Sentinel, null);
+				prev?.Invoke();
 			};
 		}
 
@@ -35,7 +35,7 @@ namespace Open.HttpProxy
 
 		public bool IsCompleted => WasCompleted;
 
-	    public void OnCompleted(Action continuation)
+		public void OnCompleted(Action continuation)
 		{
 			if (Continuation == Sentinel ||
 				Interlocked.CompareExchange(ref Continuation, continuation, null) == Sentinel)

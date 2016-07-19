@@ -57,6 +57,7 @@
     <Compile Include="Response.cs" />
     <Compile Include="ServerHandler.cs" />
     <Compile Include="Session.cs" />
+    <Compile Include="SessionEventArgs.cs" />
     <Compile Include="SocketAwaitable.cs" />
     <Compile Include="StatusLine.cs" />
     <Compile Include="Utils\BlockingPool.cs" />

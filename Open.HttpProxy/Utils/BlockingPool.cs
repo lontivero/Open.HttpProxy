@@ -16,7 +16,7 @@ namespace Open.HttpProxy.Utils
 
 		public int Count => _pool.Count;
 
-	    public void Add(T item)
+		public void Add(T item)
 		{
 			Guard.NotNull(item, "item");
 

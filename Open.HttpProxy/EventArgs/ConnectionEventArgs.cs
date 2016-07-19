@@ -2,7 +2,7 @@ namespace Open.HttpProxy.EventArgs
 {
 	public class ConnectionEventArgs : System.EventArgs
 	{
-	    public ConnectionEventArgs(Connection connection)
+		public ConnectionEventArgs(Connection connection)
 		{
 			Connection = connection;
 		}

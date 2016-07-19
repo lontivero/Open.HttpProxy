@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Open.HttpProxy
 {
-    internal class HttpStreamReader : StreamReader
+	internal class HttpStreamReader : StreamReader
 	{
 		private StringBuilder _currentLine;
 		private LineState _lineState;

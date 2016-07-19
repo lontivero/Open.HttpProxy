@@ -16,7 +16,7 @@ namespace Open.HttpProxy
 
 		public string Connection => this["Connection"];
 
-	    public int? ContentLength
+		public int? ContentLength
 		{
 			get
 			{
@@ -27,14 +27,14 @@ namespace Open.HttpProxy
 
 		public string ContentType => this["ContentType"];
 
-	    public string ContentMd5 => this["Content-MD5"];
+		public string ContentMd5 => this["Content-MD5"];
 
-	    public string CacheControl => this["Cache-Control"];
+		public string CacheControl => this["Cache-Control"];
 
-	    public string Pragma => this["Pragma"];
+		public string Pragma => this["Pragma"];
 
 
-	    public DateTimeOffset? Date
+		public DateTimeOffset? Date
 		{
 			get
 			{
@@ -98,7 +98,7 @@ namespace Open.HttpProxy
 			var sb = new StringBuilder(50* _headers.Count);
 			foreach (var header in _headers)
 			{
-			    sb.Append($"{header.Key}: {header.Value}\r\n");
+				sb.Append($"{header.Key}: {header.Value}\r\n");
 			}
 			return sb.ToString().ToCharArray();
 		}

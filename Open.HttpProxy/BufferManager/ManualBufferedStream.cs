@@ -30,11 +30,11 @@ namespace Open.HttpProxy.BufferManager
 
 		public override bool CanRead => _s.CanRead;
 
-	    public override bool CanWrite => _s.CanWrite;
+		public override bool CanWrite => _s.CanWrite;
 
-	    public override bool CanSeek => false;
+		public override bool CanSeek => false;
 
-	    public override long Length 
+		public override long Length 
 		{
 			get 
 			{
@@ -57,7 +57,7 @@ namespace Open.HttpProxy.BufferManager
 			try
 			{
 				if (!disposing) return;
-                // TODO: and....
+				// TODO: and....
 			}
 			finally
 			{
