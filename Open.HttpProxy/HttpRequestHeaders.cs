@@ -32,5 +32,6 @@ namespace Open.HttpProxy
 
 	public class HttpResponseHeaders : HttpHeaders
 	{
+		
 	}
 }

@@ -3,16 +3,13 @@ namespace Open.HttpProxy
 {
 	public class Response
 	{
-		private readonly Session _session;
-
-		public Response(Session session)
-		{
-			_session = session;
-		}
-
 		public StatusLine StatusLine { get; set; }
-		public HttpResponseHeaders Headers { get; set; }
+		public HttpResponseHeaders Headers { get; } = new HttpResponseHeaders();
 
-		public string Body => string.Empty;
+		public byte[] Body { get; set; }
+
+		public bool IsChunked => Headers.TransferEncoding?.Contains("chunked") ?? false;
+
+		public bool HasBody => (Headers.ContentLength.HasValue && Headers.ContentLength.Value > 0) || IsChunked;
 	}
 }

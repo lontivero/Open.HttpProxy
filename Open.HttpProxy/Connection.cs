@@ -103,7 +103,7 @@ namespace Open.HttpProxy
 
 			var awaitableSocket = AwaitableSocketPool.Take();
 			awaitableSocket.EventArgs.RemoteEndPoint = Endpoint;
-
+			awaitableSocket.EventArgs.SetBuffer(new byte[0], 0, 0 ); // data can be sent otherwise
 			await _socket.ConnectAsync(awaitableSocket);
 		}
 

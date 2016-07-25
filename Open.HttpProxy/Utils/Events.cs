@@ -31,7 +31,7 @@ namespace Open.HttpProxy.Utils
 		internal static void RaiseAsync<T>(EventHandler<T> handler, object sender, T args) where T : System.EventArgs
 		{
 			if (handler == null) return; 
-			Task.Run(() => handler.Invoke(sender, args));
+			Task.Factory.StartNew(() => handler.Invoke(sender, args), TaskCreationOptions.LongRunning);
 		}
 
 		internal static void Raise<T>(EventHandler<T> handler, object sender, T args) where T : System.EventArgs

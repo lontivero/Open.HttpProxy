@@ -1,5 +1,6 @@
 ﻿
 using System;
+using System.Net.Sockets;
 using Open.HttpProxy.Utils;
 
 namespace Open.HttpProxy
@@ -34,17 +35,41 @@ namespace Open.HttpProxy
 
 		private async void OnConnectionRequested(object sender, ConnectionEventArgs e)
 		{
-			var session = new Session(e.Connection, _bufferAllocator);
-			try
+			var keepAlive = true;
+			while (keepAlive)
 			{
-				await session.ReceiveRequestAsync();
-				Events.Raise(OnRequest, this, new SessionEventArgs(session));
-				await session.ResendRequestAsync();
+				var session = new Session(e.Connection, _bufferAllocator);
+				try
+				{
+					await session.ReceiveRequestAsync();
+					//keepAlive = session.Request.KeepAlive;
+					Events.Raise(OnRequest, this, new SessionEventArgs(session));
+					if (!session.HasError)
+					{
+						await session.ResendRequestAsync();
+						await session.ReceiveResponseAsync();
+						Events.Raise(OnResponse, this, new SessionEventArgs(session));
+					}
+					await session.ResendResponseAsync();
+				}
+				catch (SocketException se)
+				{
+					e.Connection.Close();
+					return;
+				}
+				catch (Exception ex)
+				{
+					Console.WriteLine(ex);
+					try
+					{
+						await session.ClientHandler.BuildAndReturnResponseAsync("HTTP/1.1", 502, $"Bad Gateway - {ex.Message}");
+					}
+					catch (Exception)
+					{
+					}
+				}
 			}
-			catch (Exception)
-			{
-				await session.ClientHandler.BuildAndReturnResponseAsync(502, "Bad Gateway");
-			}
+			e.Connection.Close();
 		}
 	}
 }

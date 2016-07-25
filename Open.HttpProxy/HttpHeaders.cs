@@ -33,6 +33,7 @@ namespace Open.HttpProxy
 
 		public string Pragma => this["Pragma"];
 
+		public string TransferEncoding => this["Transfer-Encoding"];
 
 		public DateTimeOffset? Date
 		{
@@ -93,14 +94,19 @@ namespace Open.HttpProxy
 			Add(line.Substring(0, i), line.Substring(i + 2));
 		}
 
-		public char[] ToCharArray()
+		public void Remove(string headerName)
+		{
+			_headers.Remove(headerName);
+		}
+
+		public override string ToString()
 		{
 			var sb = new StringBuilder(50* _headers.Count);
 			foreach (var header in _headers)
 			{
-				sb.Append($"{header.Key}: {header.Value}\r\n");
+				sb.AppendLine($"{header.Key}: {header.Value}");
 			}
-			return sb.ToString().ToCharArray();
+			return sb.ToString();
 		}
 	}
 }

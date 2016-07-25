@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -22,124 +23,85 @@ namespace Open.HttpProxy
 	internal class ClientHandler
 	{
 		private readonly Session _session;
-		private InputState _inputState;
-		private readonly HttpStreamReader _reader;
+		private readonly ConnectionStream _connectionStream;
+		private Pipe _pipe;
 
 		public ClientHandler(Session session, Connection clientConnection)
 		{
 			_session = session;
-			var stream = new ManualBufferedStream(new ConnectionStream(clientConnection), _session.BufferAllocator);
-			_reader = new HttpStreamReader(stream);
+			_connectionStream = new ConnectionStream(clientConnection);
+//			_pipe = new Pipe(new ManualBufferedStream(_connectionStream, _session.BufferAllocator));
+			_pipe = new Pipe(_connectionStream);
 		}
 
-		public async Task ReceiveEntityAsync()
+		public async Task ReceiveAsync()
 		{
-			while (! await IsRequestComplete(_reader))
+			await _pipe.StartAsync();
+			var parser = new RequestParser(_pipe.Reader);
+			var request = await parser.ParseAsync();
+			if (request.IsHttps)
 			{
+				await BuildAndReturnResponseAsync(request.RequestLine.Version, 200, "Connection established");
+				_pipe = new SslPipe(_connectionStream, request.RequestLine.EndPoint.Host);
+				await _pipe.StartAsync();
+				parser = new RequestParser(_pipe.Reader);
+				request = await parser.ParseAsync();
 			}
+			_session.Request = request;
 		}
 
 		public async Task ReceiveBodyAsync()
 		{
-			var stream = await _session.Request.GetContentStreamAsync();
-			var reader = new StreamReader(stream);
-			_session.Request.Body = await reader.ReadToEndAsync();
-		}
-
-		internal async Task<Stream> GetRequestStreamAsync(int contentLenght)
-		{
-			var result = new MemoryStream();
-			var writer = new StreamWriter(result);
-			var b = new char[contentLenght];
-			await _reader.ReadBlockAsync(b, 0, contentLenght);
-			await writer.WriteAsync(b);
-			await writer.FlushAsync();
-			result.Seek(0, SeekOrigin.Begin);
-			return result;
-		}
-
-		private async Task<bool> IsRequestComplete(TextReader reader)
-		{
-			string line;
-
-			try
+			var verb = _session.Request.RequestLine.Verb;
+			if (verb.Equals("POST", StringComparison.OrdinalIgnoreCase) || verb.Equals("PUT", StringComparison.OrdinalIgnoreCase))
 			{
-				line = await reader.ReadLineAsync();
+				_session.Request.Body = _session.Request.IsChunked
+					? await _pipe.Reader.ReadChunckedBodyAsync()
+					: await _pipe.Reader.ReadBodyAsync(_session.Request.Headers.ContentLength.Value);
 			}
-			catch
-			{
-				_session.ErrorMessage = "Bad request";
-				_session.ErrorStatus = 400;
-				return true;
-			}
-
-			do
-			{
-				if (line == null)
-					break;
-				if (line == string.Empty)
-				{
-					if (_inputState == InputState.RequestLine)
-						continue;
-					return true;
-				}
-
-				if (_inputState == InputState.RequestLine)
-				{
-					_session.Request.RequestLine = new RequestLine(line);
-					_inputState = InputState.Headers;
-				}
-				else
-				{
-					try
-					{
-						_session.Request.Headers.AddLine(line);
-					}
-					catch (Exception e)
-					{
-						_session.ErrorMessage = e.Message;
-						_session.ErrorStatus = 400;
-						return true;
-					}
-				}
-
-				if (_session.HaveError)
-					return true;
-
-				try
-				{
-					line = await reader.ReadLineAsync();
-				}
-				catch
-				{
-					_session.ErrorMessage = "Bad request";
-					_session.ErrorStatus = 400;
-					return true;
-				}
-			} while (line != null);
-
-			return false;
 		}
 
-		public async Task BuildAndReturnResponseAsync(int code, string description)
+		//internal async Task<Stream> GetRequestStreamAsync(int contentLenght)
+		//{
+		//	var result = new MemoryStream();
+		//	var writer = new StreamWriter(result);
+		//	var b = new char[contentLenght];
+		//	await _pipe.Reader.ReadBlockAsync(b, 0, contentLenght);
+		//	await writer.WriteAsync(b);
+		//	await writer.FlushAsync();
+		//	result.Seek(0, SeekOrigin.Begin);
+		//	return result;
+		//}
+
+
+		public async Task BuildAndReturnResponseAsync(string version, int code, string description)
 		{
-			_session.Response.Headers = new HttpResponseHeaders();
-			_session.Response.StatusLine = new StatusLine(code.ToString(), description);
+			_session.HasError = true;
+			_session.Response.StatusLine = new StatusLine(version, code.ToString(), description);
 			_session.Response.Headers.Add("Date", DateTime.UtcNow.ToString("r"));
 			_session.Response.Headers.Add("Content-Type", "text/html; charset=UTF-8");
 			_session.Response.Headers.Add("Connection", "close");
 			_session.Response.Headers.Add("Timestamp", DateTime.UtcNow.ToString("HH:mm:ss.fff"));
-			await _session.ReturnResponse();
+			await ReturnResponse();
 		}
 
-		public Task SendEntityAsync()
+		public async Task SendEntityAsync()
 		{
-			throw new NotImplementedException();
+			await _pipe.Writer.WriteStatusLineAsync(_session.Response.StatusLine);
+			await _pipe.Writer.WriteHeadersAsync(_session.Response.Headers);
 		}
 
-		public Task SendBodyAsync()
+		public async Task SendBodyAsync()
 		{
-			throw new NotImplementedException();
+			await _pipe.Writer.WriteBodyAsync(_session.Response.Body);
+		}
+
+		internal async Task ReturnResponse()
+		{
+			var writer = _pipe.Writer;
+			await writer.WriteStatusLineAsync(_session.Response.StatusLine);
+			await writer.WriteHeadersAsync(_session.Response.Headers);
+			await writer.WriteBodyAsync(_session.Response.Body);
 		}
 	}
 }

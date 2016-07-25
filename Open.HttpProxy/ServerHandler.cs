@@ -1,16 +1,13 @@
 using System;
-using System.IO;
 using System.Net;
 using System.Threading.Tasks;
-using Open.HttpProxy.BufferManager;
 
 namespace Open.HttpProxy
 {
 	internal class ServerHandler
 	{
 		private readonly Session _session;
-		private Connection _connection;
-		private StreamWriter _streamWriter;
+		private Pipe _pipe;
 
 		public ServerHandler(Session session)
 		{
@@ -20,7 +17,6 @@ namespace Open.HttpProxy
 		public async Task ConnectToHostAsync()
 		{
 			var uri = GetUriFromRequest();
-			var dnsEndPoint = new DnsEndPoint(uri.DnsSafeHost, uri.Port);
 			var ipAddresses = await Task<IPAddress[]>.Factory.FromAsync(
 				Dns.BeginGetHostAddresses,
 				Dns.EndGetHostAddresses,
@@ -28,25 +24,25 @@ namespace Open.HttpProxy
 
 			foreach (var ipAddress in ipAddresses)
 			{
+				Connection connection = null;
 				try
 				{
-					_connection = new Connection(new IPEndPoint(ipAddress, uri.Port));
-					await _connection.ConnectAsync();
-					var stream = new ManualBufferedStream(new ConnectionStream(_connection), _session.BufferAllocator);
-					_streamWriter = new StreamWriter(stream);
-					//_streamWriter.NewLine = "\f";
+					connection = new Connection(new IPEndPoint(ipAddress, uri.Port));
+					await connection.ConnectAsync();
+					var stream = new ConnectionStream(connection);
+					_pipe = new Pipe(stream);
 					break;
 				}
 				catch
 				{
-					_connection.Close();	
+					connection?.Close();	
 				}
 			}
 		}
 
 		private Uri GetUriFromRequest()
 		{
-			var requestUri = _session.Request.RequestLine.Uri;
+			var requestUri = _session.Request.RequestLine.Authority;
 			var requestHost = _session.Request.Headers.Host;
 			if (requestUri == "*")
 			{
@@ -60,32 +56,39 @@ namespace Open.HttpProxy
 			{
 				return new Uri(new Uri(requestHost), requestUri);
 			}
-			throw new Exception();
+			throw new Exception($"Error: invalid {requestUri}");
 		}
 
 		public async Task SendEntityAsync()
 		{
-			await _streamWriter.WriteLineAsync(_session.Request.RequestLine.ToString());
-			await _streamWriter.WriteLineAsync();
-			await _streamWriter.WriteLineAsync(_session.Request.Headers.ToCharArray());
-			//await _streamWriter.WriteLineAsync("Powered-By: Open.HttpProxy");
-			await _streamWriter.WriteLineAsync();
+			await _pipe.Writer.WriteRequestLineAsync(_session.Request.RequestLine);
+			await _pipe.Writer.WriteHeadersAsync(_session.Request.Headers);
 		}
 
 		public async Task SendBodyAsync()
 		{
-			await _streamWriter.WriteAsync(_session.Request.Body);
-			await _streamWriter.FlushAsync();
+			await _pipe.Writer.WriteBodyAsync(_session.Request.Body);
 		}
 
-		public Task ReceiveEntityAsync()
+		public async Task ReceiveEntityAsync()
 		{
-			throw new NotImplementedException();
+			var parser = new ResponseParser(_pipe.Reader);
+			_session.Response = await parser.ParseAsync();
 		}
 
-		public Task ReceiveBodyAsync()
+		public async Task ReceiveBodyAsync()
 		{
-			throw new NotImplementedException();
+			if (_session.Response.HasBody)
+			{
+				_session.Response.Body = _session.Response.IsChunked
+					? await _pipe.Reader.ReadChunckedBodyAsync()
+					: await _pipe.Reader.ReadBodyAsync(_session.Response.Headers.ContentLength.Value);
+				if (_session.Response.IsChunked)
+				{
+					_session.Response.Headers.Add("Content-Length", _session.Response.Body.Length.ToString());
+					_session.Response.Headers.Remove("Transfer-Encoding");
+				}
+			}
 		}
 	}
 }

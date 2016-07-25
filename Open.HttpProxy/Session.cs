@@ -1,4 +1,3 @@
-using System.IO;
 using System.Threading.Tasks;
 
 namespace Open.HttpProxy
@@ -10,13 +9,13 @@ namespace Open.HttpProxy
 		private readonly Connection _clientConnection;
 		private readonly ClientHandler _clientHandler;
 		private readonly ServerHandler _serverHandler;
-		
+
 		public Session(Connection clientConnection, BufferAllocator bufferAllocator)
 		{
 			_clientConnection = clientConnection;
 			BufferAllocator = bufferAllocator;
-			Request = new Request(this);
-			Response = new Response(this);
+			Request = new Request();
+			Response = new Response();
 			_clientHandler = new ClientHandler(this, _clientConnection);
 			_serverHandler = new ServerHandler(this);
 		}
@@ -28,15 +27,17 @@ namespace Open.HttpProxy
 		public string ErrorMessage { get; set; }
 		public int ErrorStatus { get; set; }
 
-		public Request Request { get; }
+		public Request Request { get; internal set; }
 
-		public Response Response { get; }
+		public Response Response { get; internal set; }
 
-		internal bool HaveError { get; set; }
+		internal bool HasError { get; set; }
+
+		public bool IsHttps => Request.IsHttps;
 
 		public async Task ReceiveRequestAsync()
 		{
-			await _clientHandler.ReceiveEntityAsync();
+			await _clientHandler.ReceiveAsync();
 			await _clientHandler.ReceiveBodyAsync();
 		}
 
@@ -58,18 +59,5 @@ namespace Open.HttpProxy
 			await _clientHandler.SendEntityAsync();
 			await _clientHandler.SendBodyAsync();
 		}
-
-		internal async Task ReturnResponse()
-		{
-			var stream = new BufferedStream(new ConnectionStream(_clientConnection));
-			var writer = new StreamWriter(stream);
-			await writer.WriteLineAsync(Response.StatusLine.ResponseLine);
-			await writer.WriteAsync("\r\n".ToCharArray());
-			await writer.WriteAsync(Response.Headers.ToCharArray());
-			await writer.WriteAsync(Response.Body.ToCharArray());
-			await writer.FlushAsync();
-			stream.Close();
-		}
-
 	}
 }
