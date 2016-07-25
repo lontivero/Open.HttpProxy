@@ -1,22 +1,30 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Net;
+using System.Net.Sockets;
 using System.Threading.Tasks;
+using Open.HttpProxy.BufferManager;
 
 namespace Open.HttpProxy
 {
 	internal class ServerHandler
 	{
 		private readonly Session _session;
-		private Pipe _pipe;
+		private readonly Connection _serverConnection;
+		private readonly Pipe _pipe;
 
-		public ServerHandler(Session session)
+		public ServerHandler(Session session, Connection serverConnection)
 		{
 			_session = session;
+			_serverConnection = serverConnection;
+//			_pipe = new Pipe(new BufferedStream(new ConnectionStream(serverConnection)));
+			_pipe = new Pipe(new BufferedStream(new ConnectionStream(serverConnection), 16 * 1024));
 		}
 
-		public async Task ConnectToHostAsync()
+		public static async Task<Connection> ConnectToHostAsync(Uri uri)
 		{
-			var uri = GetUriFromRequest();
 			var ipAddresses = await Task<IPAddress[]>.Factory.FromAsync(
 				Dns.BeginGetHostAddresses,
 				Dns.EndGetHostAddresses,
@@ -29,40 +37,31 @@ namespace Open.HttpProxy
 				{
 					connection = new Connection(new IPEndPoint(ipAddress, uri.Port));
 					await connection.ConnectAsync();
-					var stream = new ConnectionStream(connection);
-					_pipe = new Pipe(stream);
-					break;
+					return connection;
 				}
-				catch
+				catch(SocketException)
 				{
-					connection?.Close();	
+					connection?.Close();
 				}
 			}
-		}
-
-		private Uri GetUriFromRequest()
-		{
-			var requestUri = _session.Request.RequestLine.Authority;
-			var requestHost = _session.Request.Headers.Host;
-			if (requestUri == "*")
-			{
-				return new Uri(requestHost, UriKind.Relative);
-			}
-			if (Uri.IsWellFormedUriString(requestUri, UriKind.Absolute))
-			{
-				return new Uri(requestUri, UriKind.Absolute);
-			}
-			if (Uri.IsWellFormedUriString(requestUri, UriKind.Relative))
-			{
-				return new Uri(new Uri(requestHost), requestUri);
-			}
-			throw new Exception($"Error: invalid {requestUri}");
+			return null;
 		}
 
 		public async Task SendEntityAsync()
 		{
 			await _pipe.Writer.WriteRequestLineAsync(_session.Request.RequestLine);
-			await _pipe.Writer.WriteHeadersAsync(_session.Request.Headers);
+			await _pipe.Writer.WriteHeadersAsync(TransformHeaders(_session.Request.Headers));
+		}
+
+		private IEnumerable<KeyValuePair<string, string>> TransformHeaders(HttpRequestHeaders headers)
+		{
+			if (headers.ProxyConnection == null) return headers;
+			var filteredHeaders = headers
+				.Where(x => !x.Key.Equals("proxy-connection", StringComparison.OrdinalIgnoreCase))
+				.Where(x => !x.Key.Equals("connection", StringComparison.OrdinalIgnoreCase))
+				.ToDictionary(entry => entry.Key, entry => entry.Value);
+			filteredHeaders.Add("Connection", headers.ProxyConnection);
+			return filteredHeaders;
 		}
 
 		public async Task SendBodyAsync()

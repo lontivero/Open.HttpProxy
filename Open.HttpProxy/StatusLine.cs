@@ -4,16 +4,17 @@ namespace Open.HttpProxy
 {
 	public class StatusLine
 	{
-		public StatusLine(string line)
+		public static StatusLine Parse(string line)
 		{
 			var ifs = line.IndexOf(' ');
 			var ils = line.LastIndexOf(' ');
-			Version = line.Substring(0, ifs);
-			Code = line.Substring(ifs + 1, ils - ifs - 1);
-			Description = line.Substring(ils + 1);
+			var version = ProtocolVersion.Parse(line.Substring(0, ifs));
+			var code = line.Substring(ifs + 1, ils - ifs - 1);
+			var description = line.Substring(ils + 1);
+			return new StatusLine(version, code, description);
 		}
 
-		public StatusLine(string version, string code, string description)
+		public StatusLine(ProtocolVersion version, string code, string description)
 		{
 			Code = code;
 			Description = description;
@@ -32,7 +33,7 @@ namespace Open.HttpProxy
 			set;
 		}
 
-		public string Version
+		public ProtocolVersion Version
 		{
 			get;
 			set;

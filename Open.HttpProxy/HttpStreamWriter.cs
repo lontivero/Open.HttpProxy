@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
@@ -25,7 +26,7 @@ namespace Open.HttpProxy
 			await WriteLineAsync(statusLine.ToString());
 		}
 
-		public async Task WriteHeadersAsync(HttpHeaders headers)
+		public async Task WriteHeadersAsync(IEnumerable<KeyValuePair<string, string>> headers)
 		{
 			foreach (var header in headers)
 			{

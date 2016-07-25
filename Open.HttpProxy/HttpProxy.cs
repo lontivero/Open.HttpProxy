@@ -19,7 +19,7 @@ namespace Open.HttpProxy
 		public HttpProxy(int port=8888)
 		{
 			_listener = new TcpListener(port);
-			_bufferAllocator = new BufferAllocator(new byte[1024*1024]);
+			_bufferAllocator = new BufferAllocator(new byte[20*1024*1024]);
 			_listener.ConnectionRequested += OnConnectionRequested;
 		}
 
@@ -35,41 +35,43 @@ namespace Open.HttpProxy
 
 		private async void OnConnectionRequested(object sender, ConnectionEventArgs e)
 		{
+			Connection clientConnection = e.Connection;
+			Connection serverConnection = null;
+
 			var keepAlive = true;
 			while (keepAlive)
 			{
-				var session = new Session(e.Connection, _bufferAllocator);
+				var session = new Session(clientConnection, serverConnection, _bufferAllocator);
 				try
 				{
 					await session.ReceiveRequestAsync();
-					//keepAlive = session.Request.KeepAlive;
 					Events.Raise(OnRequest, this, new SessionEventArgs(session));
 					if (!session.HasError)
 					{
+						serverConnection = await session.ConnectToHostAsync();
 						await session.ResendRequestAsync();
 						await session.ReceiveResponseAsync();
 						Events.Raise(OnResponse, this, new SessionEventArgs(session));
+						keepAlive = session.Response.KeepAlive;
 					}
 					await session.ResendResponseAsync();
-				}
-				catch (SocketException se)
-				{
-					e.Connection.Close();
-					return;
 				}
 				catch (Exception ex)
 				{
 					Console.WriteLine(ex);
 					try
 					{
-						await session.ClientHandler.BuildAndReturnResponseAsync("HTTP/1.1", 502, $"Bad Gateway - {ex.Message}");
+						var ver = ProtocolVersion.Parse("HTTP/1.1");
+						await session.ClientHandler.BuildAndReturnResponseAsync(ver, 502, $"Bad Gateway - {ex.Message}");
 					}
 					catch (Exception)
 					{
 					}
+					break;
 				}
 			}
-			e.Connection.Close();
+			clientConnection?.Close();
+			serverConnection?.Close();
 		}
 	}
 }

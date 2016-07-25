@@ -98,73 +98,38 @@ namespace Open.HttpProxy.BufferManager
  
 		public override async Task<int> ReadAsync(byte[] array, int offset, int count, CancellationToken cancellationToken)
 		{
-			int n = _readLen - _readPos;
-			if (n == 0) 
-			{
-				if (_writePos > 0) await FlushWriteAsync();
-				if (count > _bufferSize) 
-				{
-					n = _s.Read(array, offset, count);
-					// Throw away read buffer.
-					_readPos = 0;
-					_readLen = 0;
-					return n;
-				}
-				if (_buffer.Count == 0) _buffer = await _allocator.AllocateAsync(_bufferSize);
-				n = await _s.ReadAsync(_buffer.Array, _buffer.Offset, _buffer.Count, cancellationToken);
-				if (n == 0) return 0;
-				_readPos = 0;
-				_readLen = n;
-			}
-			if (n > count) n = count;
-			Buffer.BlockCopy(_buffer.Array, _buffer.Offset + _readPos, array, offset, n);
-			_readPos += n;
+			await EnsuranceBuffer();
 
-			return n;
+			var available = _readLen - _readPos;
+			var readCount = Math.Min(available, count);
+			if (available > 0)
+			{
+				Buffer.BlockCopy(_buffer.Array, _buffer.Offset + _readPos, array, offset, readCount);
+				available -= readCount;
+				_readPos += readCount;
+			}
+			var n = await _s.ReadAsync(array, offset + readCount, count - readCount, cancellationToken);
+
+			return readCount + n;
 		}
 
 		public override async Task WriteAsync(byte[] array, int offset, int count, CancellationToken ct)
 		{
-			if (_writePos==0) 
+			await EnsuranceBuffer();
+			var freeBuffer = _bufferSize - _writePos;
+			var writeToBuffer = count < freeBuffer;
+			if (writeToBuffer)
 			{
-				if (_readPos < _readLen)
-					FlushRead();
-				else {
-					_readPos = 0;
-					_readLen = 0;
-				}
+				Buffer.BlockCopy(array, offset, _buffer.Array, _buffer.Offset + _writePos, count);
+				_writePos += count;
+				return;
 			}
 
 			if (_writePos > 0)
 			{
-				int numBytes = _bufferSize - _writePos;   // space left in buffer
-				if (numBytes > 0) {
-					if (numBytes > count)
-						numBytes = count;
-					Buffer.BlockCopy(array, offset, _buffer.Array, _buffer.Offset + _writePos, numBytes);
-					_writePos += numBytes;
-					if (count==numBytes) return;
-					offset += numBytes;
-					count -= numBytes;
-				}
-				// Reset our buffer.  We essentially want to call FlushWrite
-				// without calling Flush on the underlying Stream.
-				await _s.WriteAsync(_buffer.Array, _buffer.Offset, _writePos, ct);
-				_writePos = 0;
+				await FlushWriteAsync();
 			}
-
-			if (count >= _bufferSize) 
-			{
-				await _s.WriteAsync(array, offset, count, ct);
-				return;
-			}
-			
-			if (count == 0)
-				return;
-
-			if (_buffer.Count == 0) _buffer = await _allocator.AllocateAsync(_bufferSize);
-			Buffer.BlockCopy(array, offset, _buffer.Array, _buffer.Offset, count);
-			_writePos = count;
+			await _s.WriteAsync(array, offset, count, ct);
 		}
 
 		public override long Seek(long offset, SeekOrigin origin)
@@ -185,6 +150,13 @@ namespace Open.HttpProxy.BufferManager
 		public override void Write(byte[] buffer, int offset, int count)
 		{
 			throw new NotSupportedException();
+		}
+		private async Task EnsuranceBuffer()
+		{
+			if (_buffer.Count == 0)
+			{
+				_buffer = await _allocator.AllocateAsync(_bufferSize);
+			}
 		}
 	}
 }

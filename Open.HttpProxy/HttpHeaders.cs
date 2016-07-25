@@ -98,6 +98,10 @@ namespace Open.HttpProxy
 		{
 			_headers.Remove(headerName);
 		}
+		public bool Contains(string headerName)
+		{
+			return this[headerName] != null;
+		}
 
 		public override string ToString()
 		{

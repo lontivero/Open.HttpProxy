@@ -33,7 +33,7 @@ namespace Open.HttpProxy
 
 				if (_inputState == InputState.RequestLine)
 				{
-					response.StatusLine = new StatusLine(line);
+					response.StatusLine = StatusLine.Parse(line);
 					_inputState = InputState.Headers;
 				}
 				else

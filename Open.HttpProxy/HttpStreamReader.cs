@@ -11,7 +11,7 @@ namespace Open.HttpProxy
 		private readonly Stream _stream;
 		private StringBuilder _currentLine;
 		private LineState _lineState;
-
+		 
 		public HttpStreamReader(Stream stream)
 		{
 			_stream = stream;
@@ -28,6 +28,13 @@ namespace Open.HttpProxy
 			}
 			while (num2 > 0 && num < count);
 			return num;
+		}
+
+
+		public async Task<RequestLine> ReadRequestLineAsync()
+		{
+			var line = await ReadLineAsync();
+			return new RequestLine(line);
 		}
 
 		public async Task<string> ReadLineAsync()
@@ -68,7 +75,7 @@ namespace Open.HttpProxy
 		{
 			// TODO: a new char everytime? this seems crazy!
 			var array = new byte[1];
-			if (await ReadBytesAsync(array, 0, 1) == 0)
+			if (await _stream.ReadAsync(array, 0, 1) == 0)
 			{
 				return -1;
 			}

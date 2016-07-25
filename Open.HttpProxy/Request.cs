@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -15,6 +16,25 @@ namespace Open.HttpProxy
 		public bool IsChunked => Headers.TransferEncoding?.Contains("chunked") ?? false;
 
 		public byte[] Body { get; set; }
+
+		internal Uri GetUriFromRequest()
+		{
+			var requestUri = RequestLine.Authority;
+			var requestHost = Headers.Host;
+			if (requestUri == "*")
+			{
+				return new Uri(requestHost, UriKind.Relative);
+			}
+			if (Uri.IsWellFormedUriString(requestUri, UriKind.Absolute))
+			{
+				return new Uri(requestUri, UriKind.Absolute);
+			}
+			if (Uri.IsWellFormedUriString(requestUri, UriKind.Relative))
+			{
+				return new Uri(new Uri(requestHost), requestUri);
+			}
+			throw new Exception($"Error: invalid {requestUri}");
+		}
 
 		//public async Task<Stream> GetContentStreamAsync()
 		//{

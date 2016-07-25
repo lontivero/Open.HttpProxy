@@ -58,6 +58,7 @@
     <Compile Include="Listeners\TcpListener.cs" />
     <Compile Include="Pipe.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ProtocolVersion.cs" />
     <Compile Include="Request.cs" />
     <Compile Include="RequestLine.cs" />
     <Compile Include="RequestParser.cs" />

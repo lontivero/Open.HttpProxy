@@ -30,8 +30,8 @@ namespace Open.HttpProxy
 		{
 			_session = session;
 			_connectionStream = new ConnectionStream(clientConnection);
-//			_pipe = new Pipe(new ManualBufferedStream(_connectionStream, _session.BufferAllocator));
-			_pipe = new Pipe(_connectionStream);
+//			_pipe = new Pipe(new BufferedStream(_connectionStream));
+			_pipe = new Pipe(new BufferedStream(_connectionStream));
 		}
 
 		public async Task ReceiveAsync()
@@ -74,7 +74,7 @@ namespace Open.HttpProxy
 		//}
 
 
-		public async Task BuildAndReturnResponseAsync(string version, int code, string description)
+		public async Task BuildAndReturnResponseAsync(ProtocolVersion version, int code, string description)
 		{
 			_session.HasError = true;
 			_session.Response.StatusLine = new StatusLine(version, code.ToString(), description);

@@ -20,6 +20,8 @@ namespace Open.HttpProxy
 
 		public string Expect => this["Expect"];
 
+		public string ProxyConnection => this["Proxy-Connection"];
+
 		public bool? ExpectContinue 
 		{
 			get
