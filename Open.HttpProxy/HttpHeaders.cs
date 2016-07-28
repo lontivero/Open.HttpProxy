@@ -2,14 +2,15 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 
 namespace Open.HttpProxy
 {
-	public abstract class HttpHeaders : IEnumerable<KeyValuePair<string, string>>
+	public class HttpHeaders : IEnumerable<KeyValuePair<string, string>>
 	{
 		private readonly Dictionary<string, string> _headers;
-		protected HttpHeaders()
+		internal HttpHeaders()
 		{
 			_headers = new Dictionary<string, string>(20, StringComparer.OrdinalIgnoreCase);
 		}
@@ -25,7 +26,7 @@ namespace Open.HttpProxy
 			}
 		}
 
-		public string ContentType => this["ContentType"];
+		public string ContentType => this["Content-Type"];
 
 		public string ContentMd5 => this["Content-MD5"];
 
@@ -34,6 +35,35 @@ namespace Open.HttpProxy
 		public string Pragma => this["Pragma"];
 
 		public string TransferEncoding => this["Transfer-Encoding"];
+
+		public string Host => this["Host"];
+
+		public string Accept => this["Accept"];
+
+		public Uri Referer => new Uri(this["Referer"]);
+
+		public string AcceptCharset => this["Accept-Charset"];
+
+		public string AcceptEncoding => this["Accept-Encoding"];
+
+		public string AcceptLanguage => this["Accept-Language"];
+
+		public string Authorization => this["Authorization"];
+
+		public string Expect => this["Expect"];
+
+		public string ProxyConnection => this["Proxy-Connection"];
+
+		public bool? ExpectContinue
+		{
+			get
+			{
+				bool val;
+				return bool.TryParse(this["Expect-Continue"], out val) && val;
+			}
+		}
+
+		public string Upgrade => this["Upgrade"];
 
 		public DateTimeOffset? Date
 		{
@@ -111,6 +141,17 @@ namespace Open.HttpProxy
 				sb.AppendLine($"{header.Key}: {header.Value}");
 			}
 			return sb.ToString();
+		}
+
+		internal IEnumerable<KeyValuePair<string, string>> TransformHeaders()
+		{
+			if (ProxyConnection == null) return this;
+			var filteredHeaders = this
+				.Where(x => !x.Key.Equals("proxy-connection", StringComparison.OrdinalIgnoreCase))
+				.Where(x => !x.Key.Equals("connection", StringComparison.OrdinalIgnoreCase))
+				.ToDictionary(entry => entry.Key, entry => entry.Value);
+			filteredHeaders.Add("Connection", ProxyConnection);
+			return filteredHeaders;
 		}
 	}
 }

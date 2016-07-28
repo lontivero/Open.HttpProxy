@@ -7,7 +7,7 @@ namespace Open.HttpProxy
 		public static StatusLine Parse(string line)
 		{
 			var ifs = line.IndexOf(' ');
-			var ils = line.LastIndexOf(' ');
+			var ils = line.IndexOf(' ', ifs+1);
 			var version = ProtocolVersion.Parse(line.Substring(0, ifs));
 			var code = line.Substring(ifs + 1, ils - ifs - 1);
 			var description = line.Substring(ils + 1);

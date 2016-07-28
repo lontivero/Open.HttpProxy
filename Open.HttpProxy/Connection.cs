@@ -46,6 +46,8 @@ namespace Open.HttpProxy
 
 		public bool IsConnected => _socket.Connected;
 
+		public bool Available => _socket.Available > 0;
+
 		internal Connection(IPEndPoint endpoint)
 			: this(new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp), endpoint)
 		{}
@@ -57,11 +59,11 @@ namespace Open.HttpProxy
 		internal Connection(Socket socket, IPEndPoint endpoint)
 		{
 			_socket = socket;
+			_socket.NoDelay = true;
 			_endpoint = endpoint;
 			_socketDisposed = false;
 			_uri = new Uri("tcp://" + _endpoint.Address + ':' + _endpoint.Port);
 		}
-
 
 		public async Task<int> ReceiveAsync(byte[] array, int offset, int count)
 		{
@@ -99,8 +101,6 @@ namespace Open.HttpProxy
 
 		public async Task ConnectAsync()
 		{
-			//if (_socketDisposed){ callback(false); return;}
-
 			var awaitableSocket = AwaitableSocketPool.Take();
 			awaitableSocket.EventArgs.RemoteEndPoint = Endpoint;
 			awaitableSocket.EventArgs.SetBuffer(new byte[0], 0, 0 ); // data can be sent otherwise
@@ -109,7 +109,12 @@ namespace Open.HttpProxy
 
 		public void Close()
 		{
-			_socket.Close();
+			if (_socket.Connected)
+			{
+				_socket.LingerState = new LingerOption(true, 0);
+				_socket.Shutdown(SocketShutdown.Both);
+				_socket.Close();
+			}
 			_socketDisposed = true;
 		}
 	}

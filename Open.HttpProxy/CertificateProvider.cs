@@ -1,89 +1,138 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Security.Cryptography.X509Certificates;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Org.BouncyCastle.Asn1.X509;
 
 namespace Open.HttpProxy
 {
-	public static class CertificateProvider
+	public interface ICertificateProvider
 	{
-		private static readonly CertificateCache Cache = new CertificateCache();
+		Task<X509Certificate2> GetCertificateForSubjectAsync(string subject);
+	}
 
-		public static async Task<X509Certificate2> GetCertificateForHost(string hostname)
+	public class CertificateProvider : ICertificateProvider
+	{
+		public const string RootCA = "Open.HttpProxy Root CA";
+		public static readonly ICertificateProvider Default;
+
+		static CertificateProvider()
 		{
-			X509Certificate2 cert;
-			if (Cache.TryGet(hostname, out cert)) return cert;
-
-			var x509Certificate = LoadCertificateFromWindowsStore(hostname);
-			if (x509Certificate == null)
-			{
-				x509Certificate = await CreateCertificate(hostname);
-				Cache.Put(hostname, x509Certificate);
-			}
-			return x509Certificate;
+			//var rootCA = X509CertificateFactory.CreateCertificateAuthorityCertificate($"CN={RootCA}", null, null);
+			//X509CertificateFactory.SaveCertificateToWindowsStore(rootCA);
+			Default = new CachedCertificateProvider(
+				new StoredCertificateProvider(
+				new BouncyCastleCertificateProvider(
+					X509CertificateFactory.LoadCertificate(RootCA))));
 		}
 
-
-		private static X509Certificate2 LoadCertificateFromWindowsStore(string hostname)
+		private CertificateProvider()
 		{
-			var x509Store = new X509Store(StoreName.My, StoreLocation.CurrentUser);
-			x509Store.Open(OpenFlags.ReadOnly);
-			var inStr = $"CN={hostname}";
+		}
 
+		public async Task<X509Certificate2> GetCertificateForSubjectAsync(string hostname)
+		{
+			return await Default.GetCertificateForSubjectAsync(hostname);
+		}
+	}
+
+	public class CachedCertificateProvider : ICertificateProvider
+	{
+		private readonly ICertificateProvider _provider;
+		private readonly Dictionary<string, X509Certificate2> _certServerCache = new Dictionary<string, X509Certificate2>();
+		private readonly ReaderWriterLock _oRwLock = new ReaderWriterLock();
+		private static readonly SemaphoreSlim SemaphoreLock = new SemaphoreSlim(1);
+
+		public CachedCertificateProvider(ICertificateProvider provider)
+		{
+			_provider = provider;
+		}
+
+		public async Task<X509Certificate2> GetCertificateForSubjectAsync(string domain)
+		{
 			try
 			{
-				foreach (var certificate in x509Store.Certificates)
+				await SemaphoreLock.WaitAsync();
+
+				var cn = "CN=" + domain;
+				Console.Write($"Certs for {domain}");
+				if (_certServerCache.ContainsKey(cn))
 				{
-					if (inStr.Equals(certificate.Subject))
-					{
-						return certificate;
-					}
+					Console.WriteLine(" from cache");
+					HttpProxy.Trace.TraceInformation($"Certificate for {domain} got from cache");
+					return _certServerCache[cn];
 				}
+
+				var x509Certificate = await _provider.GetCertificateForSubjectAsync(domain);
+				if (x509Certificate == null)
+				{
+					HttpProxy.Trace.TraceEvent(TraceEventType.Error, 0, $"Certificate for {domain} is null");
+				}
+				else
+				{
+					_certServerCache["CN=" + domain] = x509Certificate;
+					Console.WriteLine(" generated & cached");
+					HttpProxy.Trace.TraceInformation($"Certificate for {domain} generated & cached");
+				}
+
+				return x509Certificate;
 			}
 			finally
 			{
-				x509Store.Close();
+				SemaphoreLock.Release();
 			}
-			return null;
+		}
+	}
+
+	public class StoredCertificateProvider : ICertificateProvider
+	{
+		private readonly ICertificateProvider _provider;
+
+		public StoredCertificateProvider(ICertificateProvider provider)
+		{
+			_provider = provider;
 		}
 
-		private static Task<X509Certificate2> CreateCertificate(string hostname)
+		public async Task<X509Certificate2> GetCertificateForSubjectAsync(string domain)
 		{
-			//makecert -r -ss root -n "CN=DigiTrust Global Assured ID Root, OU=www.digitrust.com, O=DigiTrust Inc, C=US" -sky signature -eku 1.3.6.1.5.5.7.3.1 -h 1 -cy authority -a sha256 -m 60
-			//makecert -pe -ss my -n "CN=*.google.com" -sky exchange -in "DigiTrust Global Assured ID Root" -is root -eku 1.3.6.1.5.5.7.3.1 -cy end -a sha256 -m 60
-
-			var isRoot =false;
-			var makecertArgs = isRoot
-				? "-r -ss root -n \"CN=DigiTrust Global Assured ID Root, OU=www.digitrust.com, O=DigiTrust Inc, C=US\" -sky signature -eku 1.3.6.1.5.5.7.3.1 -h 1 -cy authority -a sha256 -m 60"
-				: $"-pe -ss my -n \"CN={hostname}\" -sky exchange -in \"DigiTrust Global Assured ID Root\" -is root -eku 1.3.6.1.5.5.7.3.1 -cy end -a sha256 -m 60";
-
-			var tcs = new TaskCompletionSource<X509Certificate2>();
-
-			var process = new Process();
-			process.StartInfo.UseShellExecute = false;
-			process.StartInfo.RedirectStandardOutput = false;
-			process.StartInfo.RedirectStandardError = false;
-			process.StartInfo.CreateNoWindow = true;
-			process.EnableRaisingEvents = true;
-			process.StartInfo.FileName = "makecert.exe";
-			process.StartInfo.Arguments = makecertArgs;
-			process.Start();
-			process.Exited += (s, e) =>
+			var fileName = SanityFileName(domain);
+			if (File.Exists(fileName))
 			{
-				X509Certificate2 x509Certificate;
+				return X509CertificateFactory.LoadCertificateFromFile(fileName);
+			}
 
-				var num3 = 6;
-				do
-				{
-					x509Certificate = LoadCertificateFromWindowsStore(hostname);
-					Thread.Sleep(50 * (6 - num3));
-					num3--;
-				}
-				while (x509Certificate == null && num3 >= 0);
-				tcs.SetResult(x509Certificate);
-			};
+			var x509Certificate = await _provider.GetCertificateForSubjectAsync(domain);
+			x509Certificate.Save(fileName);
+			return x509Certificate;
+		}
 
-			return tcs.Task;
+		private static string SanityFileName(string name)
+		{
+			var invalidChars = Regex.Escape(new string(Path.GetInvalidFileNameChars()));
+			var invalidRegStr = string.Format(@"([{0}]*\.+$)|([{0}]+)", invalidChars);
+
+			return Regex.Replace(name, invalidRegStr, "_");
+		}
+
+	}
+
+	public class BouncyCastleCertificateProvider : ICertificateProvider
+	{
+		public X509Certificate2 CertificateAuthorityCert { get; }
+
+		public BouncyCastleCertificateProvider(X509Certificate2 certificateAuthorityCert)
+		{
+			CertificateAuthorityCert = certificateAuthorityCert;
+		}
+
+		public async Task<X509Certificate2> GetCertificateForSubjectAsync(string hostname)
+		{
+			return await Task.Run(()=> X509CertificateFactory.IssueCertificate(
+				$"CN={hostname}", CertificateAuthorityCert, null, new [] {KeyPurposeID.IdKPServerAuth}));
 		}
 	}
 }

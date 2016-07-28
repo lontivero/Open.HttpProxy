@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Net.Security;
+using System.Security.Authentication;
 using System.Threading.Tasks;
 
 namespace Open.HttpProxy
@@ -23,43 +26,97 @@ namespace Open.HttpProxy
 	internal class ClientHandler
 	{
 		private readonly Session _session;
-		private readonly ConnectionStream _connectionStream;
-		private Pipe _pipe;
+		private Pipe _pipe => _session.ClientPipe;
 
-		public ClientHandler(Session session, Connection clientConnection)
+		public ClientHandler(Session session)
 		{
 			_session = session;
-			_connectionStream = new ConnectionStream(clientConnection);
-//			_pipe = new Pipe(new BufferedStream(_connectionStream));
-			_pipe = new Pipe(new BufferedStream(_connectionStream));
 		}
 
 		public async Task ReceiveAsync()
 		{
-			await _pipe.StartAsync();
-			var parser = new RequestParser(_pipe.Reader);
-			var request = await parser.ParseAsync();
-			if (request.IsHttps)
+			_session.Trace.TraceInformation("Receiving request line");
+
+			var requestLine = await _pipe.Reader.ReadRequestLineAsync();
+			if (requestLine == null)
 			{
-				await BuildAndReturnResponseAsync(request.RequestLine.Version, 200, "Connection established");
-				_pipe = new SslPipe(_connectionStream, request.RequestLine.EndPoint.Host);
-				await _pipe.StartAsync();
-				parser = new RequestParser(_pipe.Reader);
-				request = await parser.ParseAsync();
+				_session.Trace.TraceInformation("No request line received.");
+				return;
 			}
-			_session.Request = request;
+			_session.Trace.TraceEvent(TraceEventType.Verbose, 0, requestLine.ToString());
+			_session.Trace.TraceInformation("Receiving request headers");
+
+			var headers = await _pipe.Reader.ReadHeadersAsync();
+			_session.Trace.TraceData(TraceEventType.Verbose, 0, headers.ToString());
+
+			_session.Request = new Request(requestLine, headers);
 		}
 
 		public async Task ReceiveBodyAsync()
 		{
-			var verb = _session.Request.RequestLine.Verb;
-			if (verb.Equals("POST", StringComparison.OrdinalIgnoreCase) || verb.Equals("PUT", StringComparison.OrdinalIgnoreCase))
+			_session.Trace.TraceInformation("Receiving request body");
+
+			var requestLine = _session.Request.RequestLine;
+			if (requestLine.IsVerb("POST") || requestLine.IsVerb("PUT"))
 			{
 				_session.Request.Body = _session.Request.IsChunked
 					? await _pipe.Reader.ReadChunckedBodyAsync()
 					: await _pipe.Reader.ReadBodyAsync(_session.Request.Headers.ContentLength.Value);
 			}
 		}
+
+		public async Task CreateHttpsTunnelAsync()
+		{
+			_session.Trace.TraceInformation("Creating Client Tunnel");
+			var requestLine = _session.Request.RequestLine;
+			await BuildAndReturnResponseAsync(requestLine.Version, 200, "Connection established");
+			var cert = await CertificateProvider.Default.GetCertificateForSubjectAsync(_session.Request.EndPoint.WildcardDomain);
+			var sslStream = new SslStream(_session.ClientPipe.Stream, false);
+			await sslStream.AuthenticateAsServerAsync(cert, false, SslProtocols.Default, true);
+			_session.ClientPipe = new Pipe(sslStream);
+		}
+
+		public async Task BuildAndReturnResponseAsync(ProtocolVersion version, int code, string description, string body = null, bool closeConnection = false)
+		{
+			using (new TraceScope(_session.Trace, "Creating Client Tunnel"))
+			{
+				var statusLine = new StatusLine(version, code.ToString(), description);
+				_session.Trace.TraceInformation($"Responding with [{statusLine}]");
+				_session.Response = new Response(
+					statusLine,
+					new HttpHeaders
+					{
+						{"Date", DateTime.UtcNow.ToString("r")},
+						{"Timestamp", DateTime.UtcNow.ToString("HH:mm:ss.fff")}
+					});
+				if (closeConnection)
+				{
+					_session.Response.Headers.Add("Connection", "close");
+				}
+				if (body != null)
+				{
+					_session.Response.Body = _session.Response.BodyEncoding.GetBytes(body);
+				}
+				await ReturnResponse();
+			}
+		}
+
+		public async Task ResendResponseAsync()
+		{
+			_session.Trace.TraceInformation("Sending server response back to the client");
+			await _pipe.Writer.WriteStatusLineAsync(_session.Response.StatusLine);
+			await _pipe.Writer.WriteHeadersAsync(_session.Response.Headers);
+			await _pipe.Writer.WriteBodyAsync(_session.Response.Body);
+		}
+
+		internal async Task ReturnResponse()
+		{
+			var writer = _pipe.Writer;
+			await writer.WriteStatusLineAsync(_session.Response.StatusLine);
+			await writer.WriteHeadersAsync(_session.Response.Headers);
+			await writer.WriteBodyAsync(_session.Response.Body);
+		}
+
 
 		//internal async Task<Stream> GetRequestStreamAsync(int contentLenght)
 		//{
@@ -73,35 +130,10 @@ namespace Open.HttpProxy
 		//	return result;
 		//}
 
-
-		public async Task BuildAndReturnResponseAsync(ProtocolVersion version, int code, string description)
+		public void Close()
 		{
-			_session.HasError = true;
-			_session.Response.StatusLine = new StatusLine(version, code.ToString(), description);
-			_session.Response.Headers.Add("Date", DateTime.UtcNow.ToString("r"));
-			_session.Response.Headers.Add("Content-Type", "text/html; charset=UTF-8");
-			_session.Response.Headers.Add("Connection", "close");
-			_session.Response.Headers.Add("Timestamp", DateTime.UtcNow.ToString("HH:mm:ss.fff"));
-			await ReturnResponse();
-		}
-
-		public async Task SendEntityAsync()
-		{
-			await _pipe.Writer.WriteStatusLineAsync(_session.Response.StatusLine);
-			await _pipe.Writer.WriteHeadersAsync(_session.Response.Headers);
-		}
-
-		public async Task SendBodyAsync()
-		{
-			await _pipe.Writer.WriteBodyAsync(_session.Response.Body);
-		}
-
-		internal async Task ReturnResponse()
-		{
-			var writer = _pipe.Writer;
-			await writer.WriteStatusLineAsync(_session.Response.StatusLine);
-			await writer.WriteHeadersAsync(_session.Response.Headers);
-			await writer.WriteBodyAsync(_session.Response.Body);
+			_session.Trace.TraceEvent(TraceEventType.Verbose, 0, "Closing client handler");
+			_pipe.Close();
 		}
 	}
 }

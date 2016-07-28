@@ -12,13 +12,15 @@ namespace Open.HttpProxy
 		public Pipe(Stream stream)
 		{
 			Stream = stream;
-			Reader = new HttpStreamReader(Stream);
-			Writer = new HttpStreamWriter(Stream);
+			Reader = new HttpStreamReader(new BufferedStream(Stream));
+			Writer = new HttpStreamWriter(new BufferedStream(Stream));
 		}
 
-		public virtual Task StartAsync()
+		public void Close()
 		{
-			return Task.FromResult(default(object));
+			Reader.Close();
+			Writer.Close();
+			Stream.Close();
 		}
 	}
 }

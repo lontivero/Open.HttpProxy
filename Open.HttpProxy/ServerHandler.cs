@@ -1,34 +1,30 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
+using System.Diagnostics;
 using System.Net;
+using System.Net.Security;
 using System.Net.Sockets;
+using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
+using System.Threading;
 using System.Threading.Tasks;
-using Open.HttpProxy.BufferManager;
 
 namespace Open.HttpProxy
 {
 	internal class ServerHandler
 	{
 		private readonly Session _session;
-		private readonly Connection _serverConnection;
-		private readonly Pipe _pipe;
+		private Pipe _pipe => _session.ServerPipe;
 
-		public ServerHandler(Session session, Connection serverConnection)
+		public ServerHandler(Session session)
 		{
 			_session = session;
-			_serverConnection = serverConnection;
-//			_pipe = new Pipe(new BufferedStream(new ConnectionStream(serverConnection)));
-			_pipe = new Pipe(new BufferedStream(new ConnectionStream(serverConnection), 16 * 1024));
 		}
 
 		public static async Task<Connection> ConnectToHostAsync(Uri uri)
 		{
-			var ipAddresses = await Task<IPAddress[]>.Factory.FromAsync(
-				Dns.BeginGetHostAddresses,
-				Dns.EndGetHostAddresses,
-				uri.DnsSafeHost, null);
+			HttpProxy.Trace.TraceInformation($"Connecting with server {uri.DnsSafeHost}");
+			var ipAddresses = await DnsResolver.GetHostAddressesAsync(uri.DnsSafeHost);
 
 			foreach (var ipAddress in ipAddresses)
 			{
@@ -39,7 +35,7 @@ namespace Open.HttpProxy
 					await connection.ConnectAsync();
 					return connection;
 				}
-				catch(SocketException)
+				catch (SocketException)
 				{
 					connection?.Close();
 				}
@@ -47,47 +43,100 @@ namespace Open.HttpProxy
 			return null;
 		}
 
-		public async Task SendEntityAsync()
+		public async Task CreateHttpsTunnelAsync()
 		{
-			await _pipe.Writer.WriteRequestLineAsync(_session.Request.RequestLine);
-			await _pipe.Writer.WriteHeadersAsync(TransformHeaders(_session.Request.Headers));
+			_session.Trace.TraceInformation("Creating Server Tunnel");
+			var sslStream = new SslStream(_session.ServerPipe.Stream, false);
+			await sslStream.AuthenticateAsClientAsync(_session.Request.Uri.Host, null, SslProtocols.Default, false);
+			_session.ServerPipe = new Pipe(sslStream);
 		}
 
-		private IEnumerable<KeyValuePair<string, string>> TransformHeaders(HttpRequestHeaders headers)
+		public async Task ResendRequestAsync()
 		{
-			if (headers.ProxyConnection == null) return headers;
-			var filteredHeaders = headers
-				.Where(x => !x.Key.Equals("proxy-connection", StringComparison.OrdinalIgnoreCase))
-				.Where(x => !x.Key.Equals("connection", StringComparison.OrdinalIgnoreCase))
-				.ToDictionary(entry => entry.Key, entry => entry.Value);
-			filteredHeaders.Add("Connection", headers.ProxyConnection);
-			return filteredHeaders;
-		}
-
-		public async Task SendBodyAsync()
-		{
-			await _pipe.Writer.WriteBodyAsync(_session.Request.Body);
-		}
-
-		public async Task ReceiveEntityAsync()
-		{
-			var parser = new ResponseParser(_pipe.Reader);
-			_session.Response = await parser.ParseAsync();
-		}
-
-		public async Task ReceiveBodyAsync()
-		{
-			if (_session.Response.HasBody)
+			using (new TraceScope(_session.Trace, "Sending request to server"))
 			{
-				_session.Response.Body = _session.Response.IsChunked
-					? await _pipe.Reader.ReadChunckedBodyAsync()
-					: await _pipe.Reader.ReadBodyAsync(_session.Response.Headers.ContentLength.Value);
-				if (_session.Response.IsChunked)
+				await _pipe.Writer.WriteRequestLineAsync(_session.Request.RequestLine);
+				await _pipe.Writer.WriteHeadersAsync(_session.Request.Headers.TransformHeaders());
+				await _pipe.Writer.WriteBodyAsync(_session.Request.Body);
+			}
+		}
+
+		public async Task ReceiveResponseAsync()
+		{
+			_session.Trace.TraceInformation("Receiving response from server");
+			var statusLine = await _pipe.Reader.ReadStatusLineAsync();
+			if (statusLine == null)
+			{
+				_session.Trace.TraceInformation("No status line received.");
+				return;
+			}
+			_session.Trace.TraceEvent(TraceEventType.Verbose, 0, statusLine.ToString());
+			_session.Trace.TraceInformation("Receiving request headers");
+
+			var headers = await _pipe.Reader.ReadHeadersAsync();
+			_session.Trace.TraceData(TraceEventType.Verbose, 0, headers.ToString());
+
+			_session.Response = new Response(statusLine, headers);
+
+			var response = _session.Response;
+			if (response.HasBody)
+			{
+				if (response.IsChunked)
 				{
-					_session.Response.Headers.Add("Content-Length", _session.Response.Body.Length.ToString());
-					_session.Response.Headers.Remove("Transfer-Encoding");
+					_session.Trace.TraceEvent(TraceEventType.Verbose, 0, "Receiving chuncked body");
+					response.Body = await _pipe.Reader.ReadChunckedBodyAsync();
+					response.Headers.Remove("Transfer-Encoding");
+				}
+				else if (response.Headers.ContentLength.HasValue)
+				{
+					_session.Trace.TraceEvent(TraceEventType.Verbose, 0, $"Receiving body with content length = {response.Headers.ContentLength}");
+					response.Body = await _pipe.Reader.ReadBodyAsync(response.Headers.ContentLength.Value);
+				}
+				else
+				{
+					_session.Trace.TraceEvent(TraceEventType.Verbose, 0, "Receiving body with no content length");
+					response.Body = await _pipe.Reader.ReadBodyToEndAsync();
 				}
 			}
+		}
+
+		public void Close()
+		{
+			_session.Trace.TraceEvent(TraceEventType.Verbose, 0, "Closing server handler");
+			_pipe.Close();
+		}
+	}
+
+	internal static class DnsResolver
+	{
+		private static readonly Dictionary<string, IPAddress[]> Cache = new Dictionary<string, IPAddress[]>();
+		private static readonly object LockObj = new object();
+
+		public static async Task<IPAddress[]> GetHostAddressesAsync(string dnsSafeHost)
+		{
+			if (!Cache.ContainsKey(dnsSafeHost))
+			{
+				var ipAddresses = await Task<IPAddress[]>.Factory.FromAsync(
+					Dns.BeginGetHostAddresses,
+					Dns.EndGetHostAddresses,
+					dnsSafeHost, null);
+
+				lock (LockObj)
+				{
+					if (Cache.ContainsKey(dnsSafeHost))
+					{
+						return Cache[dnsSafeHost];
+					}
+					Cache[dnsSafeHost] = ipAddresses;
+				}
+				HttpProxy.Trace.TraceEvent(TraceEventType.Verbose, 0, $"DNS lookup done and cached: {ipAddresses[0]}");
+			}
+			else
+			{
+				HttpProxy.Trace.TraceEvent(TraceEventType.Verbose, 0, "DNS lookup resolved from proxy");
+			}
+
+			return Cache[dnsSafeHost];
 		}
 	}
 }

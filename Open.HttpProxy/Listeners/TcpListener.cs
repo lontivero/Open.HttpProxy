@@ -70,7 +70,6 @@ namespace Open.HttpProxy.Listeners
 
 		private void Notify(SocketAsyncEventArgs saea)
 		{
-			saea.AcceptSocket.NoDelay = true;
 			var connection = new Connection(saea.AcceptSocket);
 			Events.RaiseAsync(ConnectionRequested, this, new ConnectionEventArgs(connection));
 		}

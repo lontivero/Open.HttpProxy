@@ -33,14 +33,15 @@ namespace Open.HttpProxy
 				await WriteLineAsync($"{header.Key}: {header.Value}");
 			}
 			await WriteLineAsync();
+			await _stream.FlushAsync();
 		}
 
 		public async Task WriteBodyAsync(byte[] body)
 		{
-			if (body!=null)
-			{
-				await _stream.WriteAsync(body, 0, body.Length);
-			}
+			if (body == null || body.Length <= 0)
+				return;
+
+			await _stream.WriteAsync(body, 0, body.Length);
 			await _stream.FlushAsync();
 		}
 
@@ -49,6 +50,11 @@ namespace Open.HttpProxy
 			str = str + "\r\n"; 
 			var buffer = _encoder.GetBytes(str);
 			await _stream.WriteAsync(buffer, 0, buffer.Length);
+		}
+
+		public void Close()
+		{
+			//_stream.Close();
 		}
 	}
 }

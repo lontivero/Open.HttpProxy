@@ -1,6 +1,6 @@
 ﻿
 using System;
-using System.Net.Sockets;
+using System.Diagnostics;
 using Open.HttpProxy.Utils;
 
 namespace Open.HttpProxy
@@ -13,8 +13,10 @@ namespace Open.HttpProxy
 	{
 		private readonly TcpListener _listener;
 		private readonly BufferAllocator _bufferAllocator;
-		public EventHandler<SessionEventArgs> OnRequest;
-		public EventHandler<SessionEventArgs> OnResponse;
+		public static EventHandler<ConnectionEventArgs> OnClientConnect;
+		public static EventHandler<SessionEventArgs> OnRequest;
+		public static EventHandler<SessionEventArgs> OnResponse;
+		internal static TraceSource Trace = new TraceSource("Open.HttpProxy");
 
 		public HttpProxy(int port=8888)
 		{
@@ -30,48 +32,37 @@ namespace Open.HttpProxy
 
 		public void Stop()
 		{
-			_listener.Stop();	
+			_listener.Stop();
 		}
 
 		private async void OnConnectionRequested(object sender, ConnectionEventArgs e)
 		{
-			Connection clientConnection = e.Connection;
-			Connection serverConnection = null;
-
-			var keepAlive = true;
-			while (keepAlive)
+			using (new TraceScope(Trace, $"Receiving new connection from: {e.Connection.Uri}"))
 			{
-				var session = new Session(clientConnection, serverConnection, _bufferAllocator);
+				Connection clientConnection = e.Connection;
+
+				Events.Raise(OnClientConnect, this, new ConnectionEventArgs(clientConnection));
+				var session = new Session(clientConnection, _bufferAllocator);
+				var stateMachine = new Processing(session);
 				try
 				{
-					await session.ReceiveRequestAsync();
-					Events.Raise(OnRequest, this, new SessionEventArgs(session));
-					if (!session.HasError)
-					{
-						serverConnection = await session.ConnectToHostAsync();
-						await session.ResendRequestAsync();
-						await session.ReceiveResponseAsync();
-						Events.Raise(OnResponse, this, new SessionEventArgs(session));
-						keepAlive = session.Response.KeepAlive;
-					}
-					await session.ResendResponseAsync();
+					await stateMachine.ProcessAsync();
 				}
 				catch (Exception ex)
 				{
-					Console.WriteLine(ex);
-					try
+					Trace.TraceData(TraceEventType.Error, 0, ex);
+					if (clientConnection.IsConnected)
 					{
-						var ver = ProtocolVersion.Parse("HTTP/1.1");
-						await session.ClientHandler.BuildAndReturnResponseAsync(ver, 502, $"Bad Gateway - {ex.Message}");
+						await session.ClientHandler.BuildAndReturnResponseAsync(
+							ProtocolVersion.Parse("HTTP/1.1"), 
+							502, "Bad Gateway", ex.ToString(), true);
 					}
-					catch (Exception)
-					{
-					}
-					break;
+				}
+				finally
+				{
+					clientConnection?.Close();
 				}
 			}
-			clientConnection?.Close();
-			serverConnection?.Close();
 		}
 	}
 }
