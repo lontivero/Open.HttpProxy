@@ -22,16 +22,16 @@ namespace Open.HttpProxy
 				ts.TraceTransfer(0, $"New activity... {activityName}", newActivityId);
 			}
 			Trace.CorrelationManager.ActivityId = newActivityId;
-//			ts.TraceEvent(TraceEventType.Start, 0, activityName);
+			ts.TraceEvent(TraceEventType.Start, 0, activityName);
 		}
 		public void Dispose()
 		{
 			if (_oldActivityId != Guid.Empty)
 			{
-				_ts.TraceTransfer(0, "Transferring back...", _oldActivityId);
+				_ts.TraceTransfer(0, $"back to {_activityName}", _oldActivityId);
 			}
 			_ts.TraceEvent(TraceEventType.Stop, 0, _activityName);
-//			Trace.CorrelationManager.ActivityId = _oldActivityId;
+			Trace.CorrelationManager.ActivityId = _oldActivityId;
 		}
 	}
 }

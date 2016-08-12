@@ -38,11 +38,17 @@ namespace Open.HttpProxy
 
 		public async Task WriteBodyAsync(byte[] body)
 		{
-			if (body == null || body.Length <= 0)
-				return;
-
-			await _stream.WriteAsync(body, 0, body.Length);
-			await _stream.FlushAsync();
+			if (body != null && body.Length > 0)
+			{
+				await _stream.WriteAsync(body, 0, body.Length);
+			}
+			try
+			{
+				await _stream.FlushAsync();
+			}
+			catch
+			{
+			}
 		}
 
 		private async Task WriteLineAsync(string str=null)

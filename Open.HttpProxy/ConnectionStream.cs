@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Open.HttpProxy
@@ -36,11 +37,11 @@ namespace Open.HttpProxy
 			_connection.SendAsync(buffer, offset, count).Wait();
 		}
 
-		public override bool CanRead => true;
+		public override bool CanRead => _connection.IsConnected;
 
 		public override bool CanSeek => false;
 
-		public override bool CanWrite => true;
+		public override bool CanWrite => _connection.IsConnected;
 
 		public override long Length
 		{

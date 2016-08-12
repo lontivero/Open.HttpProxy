@@ -53,9 +53,9 @@ namespace Open.HttpProxy
 					Trace.TraceData(TraceEventType.Error, 0, ex);
 					if (clientConnection.IsConnected)
 					{
-						await session.ClientHandler.BuildAndReturnResponseAsync(
+						await session.ClientHandler.SendErrorAsync(
 							ProtocolVersion.Parse("HTTP/1.1"), 
-							502, "Bad Gateway", ex.ToString(), true);
+							502, "Bad Gateway", ex.ToString());
 					}
 				}
 				finally

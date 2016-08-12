@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using System.Net;
 
 namespace Open.HttpProxy
@@ -34,7 +33,7 @@ namespace Open.HttpProxy
 				var domain = Domain;
 
 				var subdomainLen = host.Length - domain.Length;
-				if (subdomainLen == 0) return $"*.{domain}";
+				if (subdomainLen == 0) return domain;
 
 				var subdomain = host.Substring(0, subdomainLen);
 				var io = subdomain.IndexOf(".", 0, subdomainLen -1, StringComparison.Ordinal);

@@ -71,7 +71,7 @@ namespace Open.HttpProxy.Listeners
 		private void Notify(SocketAsyncEventArgs saea)
 		{
 			var connection = new Connection(saea.AcceptSocket);
-			Events.RaiseAsync(ConnectionRequested, this, new ConnectionEventArgs(connection));
+			Events.Raise(ConnectionRequested, this, new ConnectionEventArgs(connection));
 		}
 
 		private void Listen()

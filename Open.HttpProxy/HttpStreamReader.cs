@@ -1,9 +1,6 @@
-using System;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Open.HttpProxy
@@ -60,7 +57,6 @@ namespace Open.HttpProxy
 		{
 			if (_currentLine == null)
 				_currentLine = new StringBuilder(128);
-
 
 			while (_lineState != LineState.Lf)
 			{
@@ -134,7 +130,6 @@ namespace Open.HttpProxy
 
 		private async Task<int> ReadByteAsync()
 		{
-			
 			// TODO: a new char everytime? this seems crazy!
 			var array = new byte[1];
 			if (await _stream.ReadAsync(array, 0, 1) == 0)

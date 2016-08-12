@@ -48,10 +48,41 @@ namespace Open.HttpProxy
 			_session.Trace.TraceInformation("Creating Server Tunnel");
 			var sslStream = new SslStream(_session.ServerPipe.Stream, false);
 			await sslStream.AuthenticateAsClientAsync(_session.Request.Uri.Host, null, SslProtocols.Default, false);
+
+			_session.Trace.TraceInformation("Authenticated as client!");
 			_session.ServerPipe = new Pipe(sslStream);
 		}
 
+		public async Task NegociateTunnelWithProxyAsync()
+		{
+			_session.Trace.TraceInformation("Negociating tunnel with proxy server");
+			var connectRequest = new Request(
+				_session.Request.RequestLine,
+				new HttpHeaders{
+					{"Host", _session.Request.Headers.Host },
+					{"Connection", "Keep-Alive" }
+				});
+
+			await SendRequestAsync(connectRequest);
+			var response = await InternalReceiveResponseAsync();
+
+			if (response.StatusLine.Code == "200" && 
+				response.StatusLine.Description.Equals("connection established", StringComparison.OrdinalIgnoreCase))
+			{
+				_session.Trace.TraceInformation("Tunnel established with proxy");
+			}
+			else
+			{
+				_session.Trace.TraceInformation("Tunnel with proxy failed");
+			}
+		}
+
 		public async Task ResendRequestAsync()
+		{
+			await SendRequestAsync(_session.Request);
+		}
+
+		internal async Task SendRequestAsync(Request request)
 		{
 			using (new TraceScope(_session.Trace, "Sending request to server"))
 			{
@@ -63,22 +94,27 @@ namespace Open.HttpProxy
 
 		public async Task ReceiveResponseAsync()
 		{
+			_session.Response = await InternalReceiveResponseAsync();
+		}
+
+		internal async Task<Response> InternalReceiveResponseAsync()
+		{
 			_session.Trace.TraceInformation("Receiving response from server");
 			var statusLine = await _pipe.Reader.ReadStatusLineAsync();
 			if (statusLine == null)
 			{
 				_session.Trace.TraceInformation("No status line received.");
-				return;
+				return null;
 			}
+
 			_session.Trace.TraceEvent(TraceEventType.Verbose, 0, statusLine.ToString());
 			_session.Trace.TraceInformation("Receiving request headers");
 
 			var headers = await _pipe.Reader.ReadHeadersAsync();
 			_session.Trace.TraceData(TraceEventType.Verbose, 0, headers.ToString());
 
-			_session.Response = new Response(statusLine, headers);
+			var response = new Response(statusLine, headers);
 
-			var response = _session.Response;
 			if (response.HasBody)
 			{
 				if (response.IsChunked)
@@ -98,6 +134,8 @@ namespace Open.HttpProxy
 					response.Body = await _pipe.Reader.ReadBodyToEndAsync();
 				}
 			}
+
+			return response;
 		}
 
 		public void Close()

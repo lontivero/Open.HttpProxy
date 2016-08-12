@@ -1,15 +1,12 @@
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Net.Security;
 using System.Security.Authentication;
 using System.Threading.Tasks;
+using Open.HttpProxy.Utils;
 
 namespace Open.HttpProxy
 {
-	using BufferManager;
-
 	internal enum InputState
 	{
 		RequestLine,
@@ -67,13 +64,29 @@ namespace Open.HttpProxy
 
 		public async Task CreateHttpsTunnelAsync()
 		{
-			_session.Trace.TraceInformation("Creating Client Tunnel");
 			var requestLine = _session.Request.RequestLine;
+			_session.Trace.TraceInformation($"Creating Client Tunnel for {_session.Request.EndPoint.Host}");
+
 			await BuildAndReturnResponseAsync(requestLine.Version, 200, "Connection established");
 			var cert = await CertificateProvider.Default.GetCertificateForSubjectAsync(_session.Request.EndPoint.WildcardDomain);
 			var sslStream = new SslStream(_session.ClientPipe.Stream, false);
 			await sslStream.AuthenticateAsServerAsync(cert, false, SslProtocols.Default, true);
+
+			_session.Trace.TraceInformation("Authenticated as server!");
+
 			_session.ClientPipe = new Pipe(sslStream);
+		}
+
+		public async Task SendErrorAsync(ProtocolVersion version, int code, string description, string body )
+		{
+			var nbody = $@"<html>
+				<head><title>{code} - {description}</title></head>
+				<body>
+					<h1>{code} - {description}</h1>
+					<pre>{Html.Encode(body)}</pre>
+				</body>
+			</html>";
+			await BuildAndReturnResponseAsync(version, code, description, nbody, true);
 		}
 
 		public async Task BuildAndReturnResponseAsync(ProtocolVersion version, int code, string description, string body = null, bool closeConnection = false)
