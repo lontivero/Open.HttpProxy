@@ -28,27 +28,23 @@ namespace Open.HttpProxy
 
 		internal TraceSource Trace => HttpProxy.Trace;
 
-		public Session(Connection clientConnection, BufferAllocator bufferAllocator)
+		public Session(Connection clientConnection)
 		{
 			Id = Guid.NewGuid();
 			ClientPipe = new Pipe(new ConnectionStream(clientConnection));
 			ClientHandler = new ClientHandler(this);
-			BufferAllocator = bufferAllocator;
 		}
 
-		private Session(Pipe clientPipe, Pipe serverPipe, BufferAllocator bufferAllocator)
+		private Session(Pipe clientPipe, Pipe serverPipe)
 		{
 			Id = Guid.NewGuid();
 			ClientPipe = clientPipe;
 			ClientHandler = new ClientHandler(this);
 			ServerPipe = serverPipe;
 			ServerHandler = new ServerHandler(this);
-			BufferAllocator = bufferAllocator;
 		}
 
 		public Guid Id { get; }
-
-		public BufferAllocator BufferAllocator { get; }
 
 		public string ErrorMessage { get; set; }
 
@@ -76,7 +72,7 @@ namespace Open.HttpProxy
 
 		public Session Clone()
 		{
-			return new Session(ClientPipe, ServerPipe, BufferAllocator);
+			return new Session(ClientPipe, ServerPipe);
 		}
 	}
 }

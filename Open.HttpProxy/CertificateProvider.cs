@@ -56,13 +56,16 @@ namespace Open.HttpProxy
 		{
 			try
 			{
-				await SemaphoreLock.WaitAsync();
-
 				var cn = "CN=" + domain;
-				Console.Write($"Certs for {domain}");
 				if (_certServerCache.ContainsKey(cn))
 				{
-					Console.WriteLine(" from cache");
+					return _certServerCache[cn];
+				}
+
+				await SemaphoreLock.WaitAsync();
+
+				if (_certServerCache.ContainsKey(cn))
+				{
 					HttpProxy.Trace.TraceInformation($"Certificate for {domain} got from cache");
 					return _certServerCache[cn];
 				}
@@ -131,6 +134,7 @@ namespace Open.HttpProxy
 
 		public async Task<X509Certificate2> GetCertificateForSubjectAsync(string hostname)
 		{
+			Console.WriteLine($"!!!! CREATING {hostname} cert");
 			return await Task.Run(()=> X509CertificateFactory.IssueCertificate(
 				$"CN={hostname}", CertificateAuthorityCert, null, new [] {KeyPurposeID.IdKPServerAuth}));
 		}

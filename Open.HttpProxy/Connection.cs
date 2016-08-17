@@ -82,6 +82,11 @@ namespace Open.HttpProxy
 			}
 		}
 
+		public int Receive(byte[] array, int offset, int count)
+		{
+			return _socket.Receive(array, offset, count, SocketFlags.None);
+		}
+
 		public async Task<int> SendAsync(byte[] array, int offset, int count)
 		{
 			var awaitableSocket = AwaitableSocketPool.Take();
@@ -97,6 +102,10 @@ namespace Open.HttpProxy
 			{
 				AwaitableSocketPool.Add(awaitableSocket);
 			}
+		}
+		public int Send(byte[] array, int offset, int count)
+		{
+			return _socket.Send(array, offset, count, SocketFlags.None);
 		}
 
 		public async Task ConnectAsync()

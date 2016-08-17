@@ -16,7 +16,7 @@ namespace Open.HttpProxy
 			_stream = stream;
 		}
 
-		public async Task<int> ReadBytesAsync(byte[] buffer, int index, int count)
+		private async Task<int> ReadBytesAsync(byte[] buffer, int index, int count)
 		{
 			int num = 0;
 			int num2;

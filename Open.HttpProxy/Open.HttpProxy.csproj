@@ -79,6 +79,7 @@
     <Compile Include="Utils\Events.cs" />
     <Compile Include="Utils\Guard.cs" />
     <Compile Include="Utils\StringExtensions.cs" />
+    <Compile Include="Utils\TaskExtensions.cs" />
     <Compile Include="Utils\TimeExtensions.cs" />
   </ItemGroup>
   <ItemGroup>

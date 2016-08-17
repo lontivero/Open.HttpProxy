@@ -12,16 +12,15 @@ namespace Open.HttpProxy
 	public class HttpProxy
 	{
 		private readonly TcpListener _listener;
-		private readonly BufferAllocator _bufferAllocator;
 		public static EventHandler<ConnectionEventArgs> OnClientConnect;
 		public static EventHandler<SessionEventArgs> OnRequest;
 		public static EventHandler<SessionEventArgs> OnResponse;
 		internal static TraceSource Trace = new TraceSource("Open.HttpProxy");
+		internal static readonly BufferAllocator BufferAllocator = new BufferAllocator(new byte[20 * 1024 * 1024]);
 
 		public HttpProxy(int port=8888)
 		{
 			_listener = new TcpListener(port);
-			_bufferAllocator = new BufferAllocator(new byte[20*1024*1024]);
 			_listener.ConnectionRequested += OnConnectionRequested;
 		}
 
@@ -42,11 +41,11 @@ namespace Open.HttpProxy
 				Connection clientConnection = e.Connection;
 
 				Events.Raise(OnClientConnect, this, new ConnectionEventArgs(clientConnection));
-				var session = new Session(clientConnection, _bufferAllocator);
+				var session = new Session(clientConnection);
 				var stateMachine = new Processing(session);
 				try
 				{
-					await stateMachine.ProcessAsync();
+					await stateMachine.ProcessAsync().WithoutCapturingContext();;
 				}
 				catch (Exception ex)
 				{
@@ -55,7 +54,8 @@ namespace Open.HttpProxy
 					{
 						await session.ClientHandler.SendErrorAsync(
 							ProtocolVersion.Parse("HTTP/1.1"), 
-							502, "Bad Gateway", ex.ToString());
+							502, "Bad Gateway", ex.ToString())
+							.WithoutCapturingContext();
 					}
 				}
 				finally

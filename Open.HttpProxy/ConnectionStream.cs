@@ -27,16 +27,6 @@ namespace Open.HttpProxy
 		{
 		}
 
-		public override int Read(byte[] buffer, int offset, int count)
-		{
-			return _connection.ReceiveAsync(buffer, offset, count).Result;
-		}
-
-		public override void Write(byte[] buffer, int offset, int count)
-		{
-			_connection.SendAsync(buffer, offset, count).Wait();
-		}
-
 		public override bool CanRead => _connection.IsConnected;
 
 		public override bool CanSeek => false;
@@ -56,13 +46,9 @@ namespace Open.HttpProxy
 
 		public override Task<int> ReadAsync(byte[] buffer, int offset, int count, System.Threading.CancellationToken cancellationToken)
 		{
-			//if (_connection.Available)
-			//{
-				return !cancellationToken.IsCancellationRequested
-					? _connection.ReceiveAsync(buffer, offset, count)
-					: Task.FromResult(0);  //Task.FromCanceled<int>(cancellationToken);
-			//}
-			//return Task.FromResult(0);
+			return !cancellationToken.IsCancellationRequested
+				? _connection.ReceiveAsync(buffer, offset, count)
+				: Task.FromResult(0);  //Task.FromCanceled<int>(cancellationToken);
 		}
 
 		public override Task WriteAsync(byte[] buffer, int offset, int count, System.Threading.CancellationToken cancellationToken)
@@ -70,6 +56,15 @@ namespace Open.HttpProxy
 			return !cancellationToken.IsCancellationRequested 
 				? _connection.SendAsync(buffer, offset, count)
 				: Task.FromResult(0);
+		}
+
+		public override int Read(byte[] buffer, int offset, int count)
+		{
+			return _connection.Receive(buffer, offset, count);
+		}
+		public override void Write(byte[] buffer, int offset, int count)
+		{
+			_connection.Send(buffer, offset, count);
 		}
 
 		public override void Close()

@@ -64,7 +64,7 @@ namespace Open.HttpProxy.Listeners
 			var socket = new Socket(_endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 			//		  socket.SetIPProtectionLevel(IPProtectionLevel.Unrestricted);
 			socket.Bind(_endPoint);
-			socket.Listen(4);
+			socket.Listen(2147483647);
 			return socket;
 		}
 
@@ -97,6 +97,11 @@ namespace Open.HttpProxy.Listeners
 				if (saea.SocketError == SocketError.Success)
 				{
 					Notify(saea);
+				}
+				else
+				{
+					// bad connect. Close socket because it could be in a unknown state
+					saea.AcceptSocket.Close();
 				}
 			}
 			finally

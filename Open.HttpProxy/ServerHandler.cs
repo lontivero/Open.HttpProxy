@@ -123,7 +123,7 @@ namespace Open.HttpProxy
 					response.Body = await _pipe.Reader.ReadChunckedBodyAsync();
 					response.Headers.Remove("Transfer-Encoding");
 				}
-				else if (response.Headers.ContentLength.HasValue)
+				else if (response.Headers.ContentLength.HasValue && response.Headers.ContentLength.Value >0 )
 				{
 					_session.Trace.TraceEvent(TraceEventType.Verbose, 0, $"Receiving body with content length = {response.Headers.ContentLength}");
 					response.Body = await _pipe.Reader.ReadBodyAsync(response.Headers.ContentLength.Value);
