@@ -1,7 +1,9 @@
+using System;
 using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
+using Open.HttpProxy.Utils;
 
 namespace Open.HttpProxy
 {
@@ -22,7 +24,7 @@ namespace Open.HttpProxy
 			int num2;
 			do
 			{
-				num2 = await _stream.ReadAsync(buffer, index + num, count - num);
+				num2 = await _stream.ReadAsync(buffer, index + num, count - num).WithoutCapturingContext();
 				num += num2;
 			}
 			while (num2 > 0 && num < count);
@@ -31,7 +33,7 @@ namespace Open.HttpProxy
 
 		public async Task<RequestLine> ReadRequestLineAsync()
 		{
-			var line = await ReadLineAsync();
+			var line = await ReadLineAsync().WithoutCapturingContext();
 			return line==null ? null : RequestLine.Parse(line);
 		}
 
@@ -44,11 +46,11 @@ namespace Open.HttpProxy
 		public async Task<HttpHeaders> ReadHeadersAsync()
 		{
 			var headers = new HttpHeaders();
-			var line = await ReadLineAsync();
+			var line = await ReadLineAsync().WithoutCapturingContext();
 			while (!string.IsNullOrEmpty(line))
 			{
 				headers.AddLine(line);
-				line = await ReadLineAsync();
+				line = await ReadLineAsync().WithoutCapturingContext();
 			}
 			return headers;
 		}
@@ -60,7 +62,7 @@ namespace Open.HttpProxy
 
 			while (_lineState != LineState.Lf)
 			{
-				var b = await ReadByteAsync();
+				var b = await ReadByteAsync().WithoutCapturingContext();
 				if (b == -1)
 					break;
 				switch (b)
@@ -88,51 +90,59 @@ namespace Open.HttpProxy
 
 		public async Task<byte[]> ReadBodyAsync(int contentLength)
 		{
-			var buffer = new byte[contentLength];
-			await ReadBytesAsync(buffer, 0, buffer.Length);
-			return buffer;
+			if (contentLength > 0)
+			{
+				var buffer = await HttpProxy.BufferAllocator.AllocateAsync(contentLength).WithoutCapturingContext();
+				var readed = await ReadBytesAsync(buffer.Array, buffer.Offset, contentLength).WithoutCapturingContext();
+				var arr = new byte[readed];
+				Buffer.BlockCopy(buffer.Array, buffer.Offset, arr, 0, readed);
+				return arr;
+			}
+			return new byte[0];
 		}
 
 		public async Task<byte[]> ReadBodyToEndAsync()
 		{
-			var mem = new MemoryStream(200 * 1024);
-			var buffer = new byte[4 * 1024];
+			var buffer = await HttpProxy.BufferAllocator.AllocateAsync(200*1024);
+			var readPos = 0;
 			int readed;
 			do
 			{
-				readed = await ReadBytesAsync(buffer, 0, buffer.Length);
-				await mem.WriteAsync(buffer, 0, readed);
+				readed = await ReadBytesAsync(buffer.Array, readPos, 1024).WithoutCapturingContext();
+				readPos += readed;
 			} while (readed > 0);
-			mem.Seek(0, SeekOrigin.Begin);
-			return mem.ToArray();
+			var arr = new byte[readPos];
+			Buffer.BlockCopy(buffer.Array, buffer.Offset, arr, 0, readPos);
+			return arr;
 		}
 
 		public async Task<byte[]> ReadChunckedBodyAsync()
 		{
-			var mem = new MemoryStream(200*1024);
+			var buffer = await HttpProxy.BufferAllocator.AllocateAsync(200 * 1024).WithoutCapturingContext();
+			var readPos = 0;
 			int chunkSize;
 			do
 			{
-				var chuchkHead = await ReadLineAsync();
+				var chuchkHead = await ReadLineAsync().WithoutCapturingContext();
 				chunkSize = int.Parse(chuchkHead, NumberStyles.HexNumber);
 
 				if (chunkSize > 0)
 				{
-					var buffer = new byte[chunkSize];
-					var xx = await ReadBytesAsync(buffer, 0, chunkSize);
-					await mem.WriteAsync(buffer, 0, buffer.Length);
+					var readed = await ReadBytesAsync(buffer.Array, readPos, chunkSize).WithoutCapturingContext();
+					readPos += readed;
 				}
-				await ReadLineAsync();
+				await ReadLineAsync().WithoutCapturingContext();
 			} while (chunkSize > 0);
-			mem.Seek(0, SeekOrigin.Begin);
-			return mem.ToArray();
+			var arr = new byte[readPos];
+			Buffer.BlockCopy(buffer.Array, buffer.Offset, arr, 0, readPos);
+			return arr;
 		}
 
 		private async Task<int> ReadByteAsync()
 		{
 			// TODO: a new char everytime? this seems crazy!
 			var array = new byte[1];
-			if (await _stream.ReadAsync(array, 0, 1) == 0)
+			if (await _stream.ReadAsync(array, 0, 1).WithoutCapturingContext() == 0)
 			{
 				return -1;
 			}

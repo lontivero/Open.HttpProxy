@@ -34,7 +34,7 @@ namespace Open.HttpProxy
 		{
 			_session.Trace.TraceInformation("Receiving request line");
 
-			var requestLine = await _pipe.Reader.ReadRequestLineAsync();
+			var requestLine = await _pipe.Reader.ReadRequestLineAsync().WithoutCapturingContext();
 			if (requestLine == null)
 			{
 				_session.Trace.TraceInformation("No request line received.");
@@ -43,7 +43,7 @@ namespace Open.HttpProxy
 			_session.Trace.TraceEvent(TraceEventType.Verbose, 0, requestLine.ToString());
 			_session.Trace.TraceInformation("Receiving request headers");
 
-			var headers = await _pipe.Reader.ReadHeadersAsync();
+			var headers = await _pipe.Reader.ReadHeadersAsync().WithoutCapturingContext();
 			_session.Trace.TraceData(TraceEventType.Verbose, 0, headers.ToString());
 
 			_session.Request = new Request(requestLine, headers);
@@ -57,8 +57,8 @@ namespace Open.HttpProxy
 			if (requestLine.IsVerb("POST") || requestLine.IsVerb("PUT"))
 			{
 				_session.Request.Body = _session.Request.IsChunked
-					? await _pipe.Reader.ReadChunckedBodyAsync()
-					: await _pipe.Reader.ReadBodyAsync(_session.Request.Headers.ContentLength.Value);
+					? await _pipe.Reader.ReadChunckedBodyAsync().WithoutCapturingContext()
+					: await _pipe.Reader.ReadBodyAsync(_session.Request.Headers.ContentLength.Value).WithoutCapturingContext();
 			}
 		}
 
@@ -67,10 +67,10 @@ namespace Open.HttpProxy
 			var requestLine = _session.Request.RequestLine;
 			_session.Trace.TraceInformation($"Creating Client Tunnel for {_session.Request.EndPoint.Host}");
 
-			await BuildAndReturnResponseAsync(requestLine.Version, 200, "Connection established");
-			var cert = await CertificateProvider.Default.GetCertificateForSubjectAsync(_session.Request.EndPoint.WildcardDomain);
+			await BuildAndReturnResponseAsync(requestLine.Version, 200, "Connection established").WithoutCapturingContext();
+			var cert = await CertificateProvider.Default.GetCertificateForSubjectAsync(_session.Request.EndPoint.WildcardDomain).WithoutCapturingContext();
 			var sslStream = new SslStream(_session.ClientPipe.Stream, false);
-			await sslStream.AuthenticateAsServerAsync(cert, false, SslProtocols.Default, true);
+			await sslStream.AuthenticateAsServerAsync(cert, false, SslProtocols.Default, true).WithoutCapturingContext();
 
 			_session.Trace.TraceInformation("Authenticated as server!");
 
@@ -86,7 +86,7 @@ namespace Open.HttpProxy
 					<pre>{Html.Encode(body)}</pre>
 				</body>
 			</html>";
-			await BuildAndReturnResponseAsync(version, code, description, nbody, true);
+			await BuildAndReturnResponseAsync(version, code, description, nbody, true).WithoutCapturingContext();
 		}
 
 		public async Task BuildAndReturnResponseAsync(ProtocolVersion version, int code, string description, string body = null, bool closeConnection = false)
@@ -110,24 +110,24 @@ namespace Open.HttpProxy
 				{
 					_session.Response.Body = _session.Response.BodyEncoding.GetBytes(body);
 				}
-				await ReturnResponse();
+				await ReturnResponse().WithoutCapturingContext();
 			}
 		}
 
 		public async Task ResendResponseAsync()
 		{
 			_session.Trace.TraceInformation("Sending server response back to the client");
-			await _pipe.Writer.WriteStatusLineAsync(_session.Response.StatusLine);
-			await _pipe.Writer.WriteHeadersAsync(_session.Response.Headers);
-			await _pipe.Writer.WriteBodyAsync(_session.Response.Body);
+			await _pipe.Writer.WriteStatusLineAsync(_session.Response.StatusLine).WithoutCapturingContext();
+			await _pipe.Writer.WriteHeadersAsync(_session.Response.Headers).WithoutCapturingContext();
+			await _pipe.Writer.WriteBodyAsync(_session.Response.Body).WithoutCapturingContext();
 		}
 
 		internal async Task ReturnResponse()
 		{
 			var writer = _pipe.Writer;
-			await writer.WriteStatusLineAsync(_session.Response.StatusLine);
-			await writer.WriteHeadersAsync(_session.Response.Headers);
-			await writer.WriteBodyAsync(_session.Response.Body);
+			await writer.WriteStatusLineAsync(_session.Response.StatusLine).WithoutCapturingContext();
+			await writer.WriteHeadersAsync(_session.Response.Headers).WithoutCapturingContext();
+			await writer.WriteBodyAsync(_session.Response.Body).WithoutCapturingContext();
 		}
 
 

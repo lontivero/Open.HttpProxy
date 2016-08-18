@@ -23,6 +23,7 @@
 
 using System;
 using System.Threading.Tasks;
+using Open.HttpProxy.Utils;
 
 namespace Open.HttpProxy.BufferManager
 {
@@ -46,7 +47,7 @@ namespace Open.HttpProxy.BufferManager
 			_event.Reset();
 			while ((offset = AllocateInternal(blocks)) == -1)
 			{
-				await _event.WaitAsync();
+				await _event.WaitAsync().WithoutCapturingContext();
 			}
 
 			return new ArraySegment<byte>(_buffer, offset * BlockSize, sizeBytes);

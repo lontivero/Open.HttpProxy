@@ -6,6 +6,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Open.HttpProxy.Utils;
 using Org.BouncyCastle.Asn1.X509;
 
 namespace Open.HttpProxy
@@ -36,7 +37,7 @@ namespace Open.HttpProxy
 
 		public async Task<X509Certificate2> GetCertificateForSubjectAsync(string hostname)
 		{
-			return await Default.GetCertificateForSubjectAsync(hostname);
+			return await Default.GetCertificateForSubjectAsync(hostname).WithoutCapturingContext();
 		}
 	}
 
@@ -62,7 +63,7 @@ namespace Open.HttpProxy
 					return _certServerCache[cn];
 				}
 
-				await SemaphoreLock.WaitAsync();
+				await SemaphoreLock.WaitAsync().WithoutCapturingContext();
 
 				if (_certServerCache.ContainsKey(cn))
 				{
@@ -70,7 +71,7 @@ namespace Open.HttpProxy
 					return _certServerCache[cn];
 				}
 
-				var x509Certificate = await _provider.GetCertificateForSubjectAsync(domain);
+				var x509Certificate = await _provider.GetCertificateForSubjectAsync(domain).WithoutCapturingContext();
 				if (x509Certificate == null)
 				{
 					HttpProxy.Trace.TraceEvent(TraceEventType.Error, 0, $"Certificate for {domain} is null");
@@ -108,7 +109,7 @@ namespace Open.HttpProxy
 				return X509CertificateFactory.LoadCertificateFromFile(fileName);
 			}
 
-			var x509Certificate = await _provider.GetCertificateForSubjectAsync(domain);
+			var x509Certificate = await _provider.GetCertificateForSubjectAsync(domain).WithoutCapturingContext();
 			x509Certificate.Save(fileName);
 			return x509Certificate;
 		}
@@ -136,7 +137,8 @@ namespace Open.HttpProxy
 		{
 			Console.WriteLine($"!!!! CREATING {hostname} cert");
 			return await Task.Run(()=> X509CertificateFactory.IssueCertificate(
-				$"CN={hostname}", CertificateAuthorityCert, null, new [] {KeyPurposeID.IdKPServerAuth}));
+				$"CN={hostname}", CertificateAuthorityCert, null, new [] {KeyPurposeID.IdKPServerAuth}))
+				.WithoutCapturingContext();
 		}
 	}
 }

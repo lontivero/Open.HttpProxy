@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
+using Open.HttpProxy.Utils;
 
 namespace Open.HttpProxy
 {
@@ -19,32 +20,32 @@ namespace Open.HttpProxy
 
 		public async Task WriteRequestLineAsync(RequestLine requestLine)
 		{
-			await WriteLineAsync(requestLine.ToString2());
+			await WriteLineAsync(requestLine.ToString2()).WithoutCapturingContext();
 		}
 		public async Task WriteStatusLineAsync(StatusLine statusLine)
 		{
-			await WriteLineAsync(statusLine.ToString());
+			await WriteLineAsync(statusLine.ToString()).WithoutCapturingContext();
 		}
 
 		public async Task WriteHeadersAsync(IEnumerable<KeyValuePair<string, string>> headers)
 		{
 			foreach (var header in headers)
 			{
-				await WriteLineAsync($"{header.Key}: {header.Value}");
+				await WriteLineAsync($"{header.Key}: {header.Value}").WithoutCapturingContext();
 			}
-			await WriteLineAsync();
-			await _stream.FlushAsync();
+			await WriteLineAsync().WithoutCapturingContext();
+			await _stream.FlushAsync().WithoutCapturingContext();
 		}
 
 		public async Task WriteBodyAsync(byte[] body)
 		{
 			if (body != null && body.Length > 0)
 			{
-				await _stream.WriteAsync(body, 0, body.Length);
+				await _stream.WriteAsync(body, 0, body.Length).WithoutCapturingContext();
 			}
 			try
 			{
-				await _stream.FlushAsync();
+				await _stream.FlushAsync().WithoutCapturingContext();
 			}
 			catch
 			{
@@ -55,7 +56,7 @@ namespace Open.HttpProxy
 		{
 			str = str + "\r\n"; 
 			var buffer = _encoder.GetBytes(str);
-			await _stream.WriteAsync(buffer, 0, buffer.Length);
+			await _stream.WriteAsync(buffer, 0, buffer.Length).WithoutCapturingContext();
 		}
 
 		public void Close()

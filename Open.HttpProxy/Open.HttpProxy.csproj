@@ -73,6 +73,7 @@
     <Compile Include="SessionEventArgs.cs" />
     <Compile Include="SocketAwaitable.cs" />
     <Compile Include="SslPipe.cs" />
+    <Compile Include="StateMachine.cs" />
     <Compile Include="StatusLine.cs" />
     <Compile Include="TraceScope.cs" />
     <Compile Include="Utils\BlockingPool.cs" />

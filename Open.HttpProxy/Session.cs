@@ -1,10 +1,22 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Dynamic;
 using System.Threading.Tasks;
+using Open.HttpProxy.Utils;
 
 namespace Open.HttpProxy
 {
-	using BufferManager;
+	class SessionFlag
+	{
+		private readonly Dictionary<string, bool> _flags = new Dictionary<string, bool>();
+
+		public bool this[string name]
+		{
+			get { return _flags.ContainsKey(name) && _flags[name]; }
+			set { _flags[name] = value; }
+		}
+	}
 
 	public class Session
 	{
@@ -15,11 +27,13 @@ namespace Open.HttpProxy
 
 		internal Pipe ServerPipe { get; set; }
 
-		internal async Task<Pipe> EnsureConnectedToServerAsync()
+		internal SessionFlag Flags { get; }
+
+		internal async Task<Pipe> EnsureConnectedToServerAsync(Uri uri)
 		{
 			if (ServerPipe == null)
 			{
-				var connection = await ConnectToHostAsync();
+				var connection = await ConnectToHostAsync(uri).WithoutCapturingContext();
 				ServerPipe = new Pipe(new ConnectionStream(connection));
 				ServerHandler = new ServerHandler(this);
 			}
@@ -33,6 +47,7 @@ namespace Open.HttpProxy
 			Id = Guid.NewGuid();
 			ClientPipe = new Pipe(new ConnectionStream(clientConnection));
 			ClientHandler = new ClientHandler(this);
+			Flags = new SessionFlag();
 		}
 
 		private Session(Pipe clientPipe, Pipe serverPipe)
@@ -42,6 +57,7 @@ namespace Open.HttpProxy
 			ClientHandler = new ClientHandler(this);
 			ServerPipe = serverPipe;
 			ServerHandler = new ServerHandler(this);
+			Flags = new SessionFlag();
 		}
 
 		public Guid Id { get; }
@@ -64,10 +80,9 @@ namespace Open.HttpProxy
 			(Request != null && Request.IsWebSocketHandshake) &&
 			(Response != null && Response.IsWebSocketHandshake);
 
-		public async Task<Connection> ConnectToHostAsync()
+		public async Task<Connection> ConnectToHostAsync(Uri uri)
 		{
-			var uri = Request.Uri;
-			return await ServerHandler.ConnectToHostAsync(uri);
+			return await ServerHandler.ConnectToHostAsync(uri).WithoutCapturingContext();
 		}
 
 		public Session Clone()

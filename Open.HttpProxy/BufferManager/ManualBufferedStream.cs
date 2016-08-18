@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Open.HttpProxy.Utils;
 
 namespace Open.HttpProxy.BufferManager
 {
@@ -76,7 +77,7 @@ namespace Open.HttpProxy.BufferManager
 		public override async Task FlushAsync(CancellationToken ct)
 		{
 			if (_writePos > 0) 
-				await FlushWriteAsync();
+				await FlushWriteAsync().WithoutCapturingContext();
 			else if (_readPos < _readLen && _s.CanSeek) 
 				FlushRead();
 			_readPos = 0;
@@ -91,14 +92,14 @@ namespace Open.HttpProxy.BufferManager
 
 		private async Task FlushWriteAsync()
 		{
-			await _s.WriteAsync(_buffer.Array,  _buffer.Offset, _writePos);
+			await _s.WriteAsync(_buffer.Array,  _buffer.Offset, _writePos).WithoutCapturingContext();
 			_writePos = 0;
-			await _s.FlushAsync();
+			await _s.FlushAsync().WithoutCapturingContext();
 		}
  
 		public override async Task<int> ReadAsync(byte[] array, int offset, int count, CancellationToken cancellationToken)
 		{
-			await EnsuranceBuffer();
+			await EnsuranceBuffer().WithoutCapturingContext();
 
 			var available = _readLen - _readPos;
 			var readCount = Math.Min(available, count);
@@ -108,14 +109,14 @@ namespace Open.HttpProxy.BufferManager
 				available -= readCount;
 				_readPos += readCount;
 			}
-			var n = await _s.ReadAsync(array, offset + readCount, count - readCount, cancellationToken);
+			var n = await _s.ReadAsync(array, offset + readCount, count - readCount, cancellationToken).WithoutCapturingContext();
 
 			return readCount + n;
 		}
 
 		public override async Task WriteAsync(byte[] array, int offset, int count, CancellationToken ct)
 		{
-			await EnsuranceBuffer();
+			await EnsuranceBuffer().WithoutCapturingContext();
 			var freeBuffer = _bufferSize - _writePos;
 			var writeToBuffer = count < freeBuffer;
 			if (writeToBuffer)
@@ -127,9 +128,9 @@ namespace Open.HttpProxy.BufferManager
 
 			if (_writePos > 0)
 			{
-				await FlushWriteAsync();
+				await FlushWriteAsync().WithoutCapturingContext();
 			}
-			await _s.WriteAsync(array, offset, count, ct);
+			await _s.WriteAsync(array, offset, count, ct).WithoutCapturingContext();
 		}
 
 		public override long Seek(long offset, SeekOrigin origin)
@@ -155,7 +156,7 @@ namespace Open.HttpProxy.BufferManager
 		{
 			if (_buffer.Count == 0)
 			{
-				_buffer = await _allocator.AllocateAsync(_bufferSize);
+				_buffer = await _allocator.AllocateAsync(_bufferSize).WithoutCapturingContext();
 			}
 		}
 	}

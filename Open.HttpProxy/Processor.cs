@@ -2,274 +2,239 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using Open.HttpProxy.Utils;
 
 namespace Open.HttpProxy
 {
-	interface IProcessingState
-	{
-		Task ProcessAsync(ProcessingContext ctx);
-	}
 
-
-	class ReceiveRequestState : IProcessingState
+	static class ProcessActions
 	{
-		public async Task ProcessAsync(ProcessingContext ctx)
+		public static async Task<Enum> ReceiveRequestHeadersAsync(Session ctx)
 		{
-			using (new TraceScope(ctx.Session.Trace, "Receiving request"))
+			var handler = ctx.ClientHandler;
+			await handler.ReceiveAsync().WithoutCapturingContext();
+			var request = ctx.Request;
+			if (request?.RequestLine == null)
 			{
-				var handler = ctx.Session.ClientHandler;
-				await handler.ReceiveAsync();
-				var request = ctx.Session.Request;
-				if (request?.RequestLine == null)
-				{
-					ctx.Session.Trace.TraceEvent(TraceEventType.Warning, 0, "No request received. We are done with this.");
-					ctx.NextState(ProcessingStates.Done);
-					return;
-				}
-				await handler.ReceiveBodyAsync();
-
-				if (request.RequestLine.IsVerb("CONNECT"))
-				{
-					ctx.NextState(request.Uri.Port != 80
-						? ProcessingStates.CreateHttpsTunnel
-						: ProcessingStates.CreateTunnel);
-				}
-				else
-				{
-					ctx.NextState(ProcessingStates.SendRequest);
-				}
+				ctx.Trace.TraceEvent(TraceEventType.Warning, 0, "No request received. We are done with this.");
+				return Command.Error;
 			}
+
+			if (request.RequestLine.IsVerb("CONNECT"))
+			{
+				return request.Uri.Port != 80
+					? Command.AuthenticateClient
+					: Command.CreateTunnel;
+			}
+			return Command.ReceiveBody;
 		}
-	}
 
-
-	class SendRequestState : IProcessingState
-	{
-		public async Task ProcessAsync(ProcessingContext ctx)
+		public static async Task<Enum> ReceiveRequestBodyAsync(Session ctx)
 		{
-			using (new TraceScope(ctx.Session.Trace, "Sending request to server"))
-			{
-				await ctx.Session.EnsureConnectedToServerAsync();
-				var handler = ctx.Session.ServerHandler;
-				await handler.ResendRequestAsync();
-				ctx.NextState(ProcessingStates.ReceiveResponse);
-			}
+			await ctx.ClientHandler.ReceiveBodyAsync().WithoutCapturingContext();
+			return Command.SendRequestHeaders;
 		}
-	}
 
 
-	class ReceiveResponseState : IProcessingState
-	{
-		public async Task ProcessAsync(ProcessingContext ctx)
+		public static async Task<Enum> SendRequestAsync(Session ctx)
 		{
-			using (new TraceScope(ctx.Session.Trace, "Receiving response from server"))
-			{
-				var handler = ctx.Session.ServerHandler;
-				await handler.ReceiveResponseAsync();
-				var response = ctx.Session.Response;
-				if (response?.StatusLine == null)
-				{
-					ctx.Session.Trace.TraceEvent(TraceEventType.Warning, 0, "No response received. We are done with this.");
-					ctx.NextState(ProcessingStates.Done);
-					return;
-				}
-
-				if (!response.KeepAlive)
-				{
-					ctx.Session.Trace.TraceInformation("No keep-alive from server response. Closing.");
-					handler.Close();
-				}
-				ctx.NextState(ProcessingStates.SendResponse);
-			}
+			await ctx.EnsureConnectedToServerAsync(ctx.Request.Uri).WithoutCapturingContext();
+			var handler = ctx.ServerHandler;
+			await handler.ResendRequestAsync().WithoutCapturingContext();
+			return Command.ReceiveResponse;
 		}
-	}
 
-
-	class SendResponseState : IProcessingState
-	{
-		public async Task ProcessAsync(ProcessingContext ctx)
+		public static async Task<Enum> ReceiveResponseAsync(Session ctx)
 		{
-			using (new TraceScope(ctx.Session.Trace, "Sending response back to client"))
+			var handler = ctx.ServerHandler;
+			await handler.ReceiveResponseAsync().WithoutCapturingContext();
+			var response = ctx.Response;
+			if (response?.StatusLine == null)
 			{
-				var handler = ctx.Session.ClientHandler;
-				await handler.ResendResponseAsync();
-
-				//if (ctx.Session.IsWebSocketHandshake)
-				if (ctx.Session.Request.Headers.Upgrade != null)
-				{
-					ctx.Session.Trace.TraceEvent(TraceEventType.Verbose, 0, "WebSocket handshake");
-					ctx.NextState(ProcessingStates.UpgradeToWebSocketTunnel);
-					return;
-				}
-
-				if (!ctx.Session.Request.KeepAlive && !ctx.Session.Response.KeepAlive)
-				{
-					ctx.Session.Trace.TraceEvent(TraceEventType.Verbose, 0, "No keep-alive... closing handler");
-					handler.Close();
-					ctx.NextState(ProcessingStates.Done);
-				}
-				else
-				{
-					ctx.Session.Trace.TraceEvent(TraceEventType.Verbose, 0, "keep-alive!");
-					var p = new Processing(ctx.Session.Clone());
-					await p.ProcessAsync();
-					ctx.NextState(ProcessingStates.Done);
-				}
+				ctx.Trace.TraceEvent(TraceEventType.Warning, 0, "No response received. We are done with this.");
+				return Command.Error;
 			}
+
+			if (!response.KeepAlive)
+			{
+				ctx.Trace.TraceInformation("No keep-alive from server response. Closing.");
+				handler.Close();
+			}
+			return Command.SendResponse;
 		}
-	}
 
 
-	class CreateHttpsTunnelState : IProcessingState
-	{
-		public async Task ProcessAsync(ProcessingContext ctx)
+		public static async Task<Enum> SendResponseAsync(Session ctx)
 		{
-			var s = ctx.Session;
-			using (new TraceScope(s.Trace, "Creating HTTPS Tunnel"))
+			var handler = ctx.ClientHandler;
+			await handler.ResendResponseAsync().WithoutCapturingContext();
+
+			//if (ctx.IsWebSocketHandshake)
+			if (ctx.Request.Headers.Upgrade != null)
 			{
-				var clientTunnelTask = s.ClientHandler.CreateHttpsTunnelAsync();
-				//TODO: slow! we don't need to do this now
-				var serverTunnelTask = Task.Run(async () => {
-					await s.EnsureConnectedToServerAsync();
-					await s.ServerHandler.CreateHttpsTunnelAsync();
-				});
-
-				await Task.WhenAll(clientTunnelTask, serverTunnelTask);
-				s.Request = null;
-				s.Response = null;
-				ctx.NextState(ProcessingStates.ReceiveRequest);
+				ctx.Trace.TraceEvent(TraceEventType.Verbose, 0, "WebSocket handshake");
+				return Command.UpgradeToWebSocketTunnel;
 			}
+
+			if (!ctx.Request.KeepAlive && !ctx.Response.KeepAlive)
+			{
+				ctx.Trace.TraceEvent(TraceEventType.Verbose, 0, "No keep-alive... closing handler");
+				handler.Close();
+				return Command.Exit;
+			}
+
+			ctx.Trace.TraceEvent(TraceEventType.Verbose, 0, "keep-alive!");
+			var p = StateMachineBuilder.Build();
+			await p.RunAsync(ctx.Clone()).WithoutCapturingContext();
+			return Command.Exit;
 		}
-	}
 
-
-	class CreateTunnelState : IProcessingState
-	{
-		public async Task ProcessAsync(ProcessingContext ctx)
+		public static async Task<Enum> AuthenticateClientAsync(Session ctx)
 		{
-			using (new TraceScope(ctx.Session.Trace, "Creating WebSocket Tunnel"))
-			{
-				var s = ctx.Session;
-				var clientStream = s.ClientPipe.Stream;
-				var requestLine = s.Request.RequestLine;
-
-				var responseTask = s.ClientHandler.BuildAndReturnResponseAsync(requestLine.Version, 200, "Connection established");
-				var connectServerTask = Task.Run(async () => {
-					await ctx.Session.EnsureConnectedToServerAsync();
-					var serverStream = ctx.Session.ServerPipe.Stream;
-
-					var sendTask = clientStream.CopyToAsync(serverStream);
-					var receiveTask = serverStream.CopyToAsync(clientStream);
-
-					await Task.WhenAll(sendTask, receiveTask);
-				});
-				await Task.WhenAll(responseTask, connectServerTask);
-				ctx.IsFinished = true;
-			}
+			var uri = ctx.Request.Uri;
+			await ctx.ClientHandler.CreateHttpsTunnelAsync().WithoutCapturingContext();
+			await ctx.EnsureConnectedToServerAsync(uri).WithoutCapturingContext();
+			await ctx.ServerHandler.CreateHttpsTunnelAsync().WithoutCapturingContext();
+			ctx.Response = null;
+			ctx.Request = null;
+			return Command.ReceiveRequestHeaders;
 		}
-	}
 
-
-	class SetWebSocketTunnel : IProcessingState
-	{
-		public async Task ProcessAsync(ProcessingContext ctx)
+		public static async Task<Enum> AuthenticateServerAsync(Session ctx)
 		{
-			using (new TraceScope(ctx.Session.Trace, "Creating WebSocket Tunnel"))
-			{
-				var clientStream = ctx.Session.ClientPipe.Stream;
-				await ctx.Session.EnsureConnectedToServerAsync();
-				var serverStream = ctx.Session.ServerPipe.Stream;
-
-				var sendTask = clientStream.CopyToAsync(serverStream);
-				var receiveTask = serverStream.CopyToAsync(clientStream);
-
-				await Task.WhenAll(sendTask, receiveTask);
-				ctx.IsFinished = true;
-			}
+			await ctx.EnsureConnectedToServerAsync(ctx.Request.Uri).WithoutCapturingContext();
+			await ctx.ServerHandler.CreateHttpsTunnelAsync().WithoutCapturingContext();
+			ctx.Response = null;
+			return Command.SendRequestHeaders;
 		}
-	}
 
+		public static async Task<Enum> CreateTunnelAsync(Session ctx)
+		{
+			var clientStream = ctx.ClientPipe.Stream;
+			var requestLine = ctx.Request.RequestLine;
 
-	class DoneState : IProcessingState
-	{
-		public Task ProcessAsync(ProcessingContext ctx)
+			await ctx.ClientHandler.BuildAndReturnResponseAsync(requestLine.Version, 200, "Connection established").WithoutCapturingContext();
+			await ctx.EnsureConnectedToServerAsync(ctx.Request.Uri).WithoutCapturingContext();
+			var serverStream = ctx.ServerPipe.Stream;
+
+			var sendTask = clientStream.CopyToAsync(serverStream);
+			var receiveTask = serverStream.CopyToAsync(clientStream);
+
+			await Task.WhenAll(sendTask, receiveTask).WithoutCapturingContext();
+			return Command.Exit;
+		}
+
+		public static async Task<Enum> SetWebSocketTunnelAsync(Session ctx)
+		{
+			var clientStream = ctx.ClientPipe.Stream;
+			await ctx.EnsureConnectedToServerAsync(ctx.Request.Uri).WithoutCapturingContext();
+			var serverStream = ctx.ServerPipe.Stream;
+
+			var sendTask = clientStream.CopyToAsync(serverStream);
+			var receiveTask = serverStream.CopyToAsync(clientStream);
+
+			await Task.WhenAll(sendTask, receiveTask).WithoutCapturingContext();
+			return Command.Exit;
+		}
+
+		public static async Task<Enum> FinishAsync(Session ctx)
 		{
 			try
 			{
-				var s = ctx.Session;
-				s.ClientHandler?.Close();
-				s.ServerHandler?.Close();
+				ctx.ClientHandler?.Close();
+				ctx.ServerHandler?.Close();
 			}
 			catch (Exception e)
 			{
 				/* nothing to do*/
 			}
-			finally
+			return await Task.FromResult(Command.Continue).WithoutCapturingContext();
+		}
+	}
+
+	enum State
+	{
+		Initial,
+		ReceivingBody,
+		Done,
+		AuthenticatingClient,
+		CreatingTunnel,
+		SendingRequestHeaders,
+		AuthenticatingClientServer,
+		AuthenticatingServer,
+		ReceivingHeaders,
+		ReceivingResponse,
+		SendingResponse,
+		UpgradingToWebSocketTunnel
+	}
+	enum Command
+	{
+		Start,
+		ReceiveRequestHeaders,
+		AuthenticateClient,
+		Continue,
+		ReceiveBody,
+		CreateTunnel,
+		SendRequestHeaders,
+		AuthenticateServer,
+		Error,
+		ReceiveResponse,
+		SendResponse,
+		UpgradeToWebSocketTunnel,
+		Exit
+	}
+
+
+	static class StateMachineBuilder
+	{
+		static readonly Dictionary<Enum, Func<Session, Task<Enum>>> ActionTable = new Dictionary<Enum, Func<Session, Task<Enum>>>()
 			{
-				ctx.IsFinished = true;
-			}
-			return Task.CompletedTask;
-		}
-	}
+				{State.ReceivingHeaders, ProcessActions.ReceiveRequestHeadersAsync},
+				{State.ReceivingBody, ProcessActions.ReceiveRequestBodyAsync},
+				{State.AuthenticatingClient, ProcessActions.AuthenticateClientAsync},
+				{State.CreatingTunnel, ProcessActions.CreateTunnelAsync},
+				{State.SendingRequestHeaders, ProcessActions.SendRequestAsync},
+				{State.AuthenticatingServer, ProcessActions.AuthenticateServerAsync},
+				{State.ReceivingResponse, ProcessActions.ReceiveResponseAsync },
+				{State.SendingResponse, ProcessActions.SendResponseAsync },
+				{State.UpgradingToWebSocketTunnel, ProcessActions.SetWebSocketTunnelAsync },
+				{State.Done, ProcessActions.FinishAsync},
+			};
 
-
-	internal class Processing
-	{
-		private readonly Session _session;
-		private readonly ProcessingContext _context;
-
-		public Processing(Session session)
+		public static StateMachine Build()
 		{
-			_session = session;
-			_context = new ProcessingContext(session);
+			var sm = new StateMachine(State.Initial, State.Done, Command.Start, ActionTable, null);
+			sm.OnState(State.Initial)
+				.If(Command.Start)
+				.Then(State.ReceivingHeaders, "Receiving Request line and headers");
+
+			sm.OnState(State.ReceivingHeaders)
+				.If(Command.AuthenticateClient).Then(State.AuthenticatingClient, "Authenticating as a client")
+				.If(Command.ReceiveBody).Then(State.ReceivingBody, "Receiving body")
+				.If(Command.CreateTunnel).Then(State.CreatingTunnel, "Creating tunnel")
+				.If(Command.Error).Then(State.Done, "There was an error and we are donde. Closing connections");
+
+			sm.OnState(State.AuthenticatingClient)
+				.If(Command.ReceiveRequestHeaders).Then(State.ReceivingHeaders, "Receiving Request line and headers over SSL");
+
+			sm.OnState(State.ReceivingBody)
+				.If(Command.SendRequestHeaders).Then(State.SendingRequestHeaders, "Sending request headers to server")
+				.If(Command.AuthenticateServer).Then(State.AuthenticatingServer, "Authenticating as a server");
+
+			sm.OnState(State.AuthenticatingServer)
+				.If(Command.SendRequestHeaders).Then(State.SendingRequestHeaders, "Sending request over SSL");
+
+			sm.OnState(State.SendingRequestHeaders)
+				.If(Command.ReceiveResponse).Then(State.ReceivingResponse, "Receiving response");
+
+			sm.OnState(State.ReceivingResponse)
+				.If(Command.SendResponse).Then(State.SendingResponse, "Sending response back to client");
+
+			sm.OnState(State.SendingResponse)
+				.If(Command.UpgradeToWebSocketTunnel).Then(State.UpgradingToWebSocketTunnel, "Upgrading connection to web socket")
+				.If(Command.Exit).Then(State.Done, "Closing connections");
+
+			return sm;
 		}
-
-		public async Task ProcessAsync()
-		{
-			using (new TraceScope(HttpProxy.Trace, $"Procession session {_session.Id}"))
-			{
-				while (!_context.IsFinished)
-				{
-					await _context.ProcessAsync();
-				}
-			}
-		}
-	}
-
-
-	internal class ProcessingContext
-	{
-		private IProcessingState _state;
-		internal Session Session { get; set; }
-		public bool IsFinished { get; set; }
-
-		public ProcessingContext(Session session)
-		{
-			Session = session;
-			_state = ProcessingStates.ReceiveRequest;
-		}
-
-		public void NextState(IProcessingState state)
-		{
-			_state = state;
-		}
-
-		public async Task ProcessAsync()
-		{
-			await _state.ProcessAsync(this);
-		}
-	}
-
-
-	static class ProcessingStates
-	{
-		public static IProcessingState ReceiveRequest = new ReceiveRequestState();
-		public static IProcessingState SendRequest = new SendRequestState();
-		public static IProcessingState ReceiveResponse = new ReceiveResponseState();
-		public static IProcessingState SendResponse = new SendResponseState();
-		public static IProcessingState CreateHttpsTunnel = new CreateHttpsTunnelState();
-		public static IProcessingState CreateTunnel = new CreateTunnelState();
-		public static IProcessingState Done = new DoneState();
-		public static IProcessingState UpgradeToWebSocketTunnel = new SetWebSocketTunnel();
 	}
 }
