@@ -31,7 +31,6 @@ namespace Open.HttpProxy.Listeners
 			_status = ListenerStatus.Stopped;
 			_endPoint = new IPEndPoint(IPAddress.Any, port);
 			ConnectSaeaPool.PreAllocate(100);
-			Connection.AwaitableSocketPool.PreAllocate(200);
 		}
 
 		public ListenerStatus Status => _status;
@@ -70,8 +69,8 @@ namespace Open.HttpProxy.Listeners
 
 		private void Notify(SocketAsyncEventArgs saea)
 		{
-			var connection = new Connection(saea.AcceptSocket);
-			Events.Raise(ConnectionRequested, this, new ConnectionEventArgs(connection));
+			var stream = new NetworkStream(saea.AcceptSocket);
+			Events.Raise(ConnectionRequested, this, new ConnectionEventArgs(stream));
 		}
 
 		private void Listen()

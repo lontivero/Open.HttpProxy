@@ -1,6 +1,7 @@
 ﻿
 using System;
 using System.Diagnostics;
+using System.Net.Sockets;
 using Open.HttpProxy.Utils;
 
 namespace Open.HttpProxy
@@ -36,9 +37,9 @@ namespace Open.HttpProxy
 
 		private async void OnConnectionRequested(object sender, ConnectionEventArgs e)
 		{
-			using (new TraceScope(Trace, $"Receiving new connection from: {e.Connection.Uri}"))
+			using (new TraceScope(Trace, "Receiving new connection from: {e.Stream.Uri}"))
 			{
-				Connection clientConnection = e.Connection;
+				var clientConnection = e.Stream;
 
 				Events.Raise(OnClientConnect, this, new ConnectionEventArgs(clientConnection));
 				var session = new Session(clientConnection);
@@ -50,13 +51,10 @@ namespace Open.HttpProxy
 				catch (Exception ex)
 				{
 					Trace.TraceData(TraceEventType.Error, 0, ex);
-					if (clientConnection.IsConnected)
-					{
-						await session.ClientHandler.SendErrorAsync(
-							ProtocolVersion.Parse("HTTP/1.1"), 
-							502, "Bad Gateway", ex.ToString())
-							.WithoutCapturingContext();
-					}
+					await session.ClientHandler.SendErrorAsync(
+						ProtocolVersion.Parse("HTTP/1.1"), 
+						502, "Bad Gateway", ex.ToString())
+						.WithoutCapturingContext();
 				}
 				finally
 				{

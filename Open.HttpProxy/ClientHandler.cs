@@ -124,6 +124,7 @@ namespace Open.HttpProxy
 
 		internal async Task ReturnResponse()
 		{
+			if(!_pipe.Stream.CanWrite) return;
 			var writer = _pipe.Writer;
 			await writer.WriteStatusLineAsync(_session.Response.StatusLine).WithoutCapturingContext();
 			await writer.WriteHeadersAsync(_session.Response.Headers).WithoutCapturingContext();

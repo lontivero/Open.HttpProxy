@@ -1,12 +1,14 @@
+using System.IO;
+
 namespace Open.HttpProxy.EventArgs
 {
 	public class ConnectionEventArgs : System.EventArgs
 	{
-		public ConnectionEventArgs(Connection connection)
+		public ConnectionEventArgs(Stream stream)
 		{
-			Connection = connection;
+			Stream = stream;
 		}
 
-		public Connection Connection { get; }
+		public Stream Stream { get; }
 	}
 }
