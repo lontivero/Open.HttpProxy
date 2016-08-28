@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Dynamic;
 using System.IO;
+using System.Net.Sockets;
 using System.Threading.Tasks;
 using Open.HttpProxy.Utils;
 
@@ -34,8 +35,8 @@ namespace Open.HttpProxy
 		{
 			if (ServerPipe == null)
 			{
-				var connection = await ConnectToHostAsync(uri).WithoutCapturingContext();
-				ServerPipe = new Pipe(new ConnectionStream(connection));
+				var socket = await ConnectToHostAsync(uri).WithoutCapturingContext();
+				ServerPipe = new Pipe(new NetworkStream(socket));
 				ServerHandler = new ServerHandler(this);
 			}
 			return ServerPipe;
@@ -81,7 +82,7 @@ namespace Open.HttpProxy
 			(Request != null && Request.IsWebSocketHandshake) &&
 			(Response != null && Response.IsWebSocketHandshake);
 
-		public async Task<Connection> ConnectToHostAsync(Uri uri)
+		public async Task<Socket> ConnectToHostAsync(Uri uri)
 		{
 			return await ServerHandler.ConnectToHostAsync(uri).WithoutCapturingContext();
 		}

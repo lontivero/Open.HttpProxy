@@ -22,23 +22,26 @@ namespace Open.HttpProxy
 			_session = session;
 		}
 
-		public static async Task<Connection> ConnectToHostAsync(Uri uri)
+		public static async Task<Socket> ConnectToHostAsync(Uri uri)
 		{
 			HttpProxy.Trace.TraceInformation($"Connecting with server {uri.DnsSafeHost}");
 			var ipAddresses = await DnsResolver.GetHostAddressesAsync(uri.DnsSafeHost).WithoutCapturingContext();
 
+			var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 			foreach (var ipAddress in ipAddresses)
 			{
-				Connection connection = null;
 				try
 				{
-					connection = new Connection(new IPEndPoint(ipAddress, uri.Port));
-					await connection.ConnectAsync().WithoutCapturingContext();
-					return connection;
+					await Task.Factory.FromAsync(
+						socket.BeginConnect, 
+						socket.EndConnect,
+						new IPEndPoint(ipAddress, uri.Port), socket)
+						.WithoutCapturingContext();
+					return socket;
 				}
 				catch (SocketException)
 				{
-					connection?.Close();
+					socket?.Close();
 				}
 			}
 			return null;

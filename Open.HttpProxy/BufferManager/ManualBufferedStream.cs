@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Open.HttpProxy.Utils;
@@ -77,7 +78,7 @@ namespace Open.HttpProxy.BufferManager
 		public override async Task FlushAsync(CancellationToken ct)
 		{
 			if (_writePos > 0) 
-				await FlushWriteAsync().WithoutCapturingContext();
+				await FlushWriteAsync().ConfigureAwait(continueOnCapturedContext: false);
 			else if (_readPos < _readLen && _s.CanSeek) 
 				FlushRead();
 			_readPos = 0;
@@ -92,14 +93,14 @@ namespace Open.HttpProxy.BufferManager
 
 		private async Task FlushWriteAsync()
 		{
-			await _s.WriteAsync(_buffer.Array,  _buffer.Offset, _writePos).WithoutCapturingContext();
+			await _s.WriteAsync(_buffer.Array,  _buffer.Offset, _writePos).ConfigureAwait(continueOnCapturedContext: false);
 			_writePos = 0;
-			await _s.FlushAsync().WithoutCapturingContext();
+			await _s.FlushAsync().ConfigureAwait(continueOnCapturedContext: false);
 		}
  
 		public override async Task<int> ReadAsync(byte[] array, int offset, int count, CancellationToken cancellationToken)
 		{
-			await EnsuranceBuffer().WithoutCapturingContext();
+			await EnsuranceBuffer().ConfigureAwait(continueOnCapturedContext: false);
 
 			var available = _readLen - _readPos;
 			var readCount = Math.Min(available, count);
@@ -116,7 +117,7 @@ namespace Open.HttpProxy.BufferManager
 
 		public override async Task WriteAsync(byte[] array, int offset, int count, CancellationToken ct)
 		{
-			await EnsuranceBuffer().WithoutCapturingContext();
+			await EnsuranceBuffer().ConfigureAwait(continueOnCapturedContext: false);
 			var freeBuffer = _bufferSize - _writePos;
 			var writeToBuffer = count < freeBuffer;
 			if (writeToBuffer)
@@ -128,9 +129,9 @@ namespace Open.HttpProxy.BufferManager
 
 			if (_writePos > 0)
 			{
-				await FlushWriteAsync().WithoutCapturingContext();
+				await FlushWriteAsync().ConfigureAwait(continueOnCapturedContext: false);
 			}
-			await _s.WriteAsync(array, offset, count, ct).WithoutCapturingContext();
+			await _s.WriteAsync(array, offset, count, ct).ConfigureAwait(continueOnCapturedContext: false);
 		}
 
 		public override long Seek(long offset, SeekOrigin origin)
