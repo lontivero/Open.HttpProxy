@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Dynamic;
 using System.IO;
+using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using Open.HttpProxy.Utils;
@@ -22,6 +23,7 @@ namespace Open.HttpProxy
 
 	public class Session
 	{
+		public IPEndPoint Endpoint { get; set; }
 		internal ClientHandler ClientHandler { get; set; }
 		internal ServerHandler ServerHandler { get; set; }
 
@@ -44,8 +46,9 @@ namespace Open.HttpProxy
 
 		internal TraceSource Trace => HttpProxy.Trace;
 
-		public Session(Stream clientConnection)
+		public Session(Stream clientConnection, IPEndPoint endpoint)
 		{
+			Endpoint = endpoint;
 			Id = Guid.NewGuid();
 			ClientPipe = new Pipe(clientConnection);
 			ClientHandler = new ClientHandler(this);

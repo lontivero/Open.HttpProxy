@@ -35,7 +35,7 @@ namespace Open.HttpProxy.Listeners
 
 		public ListenerStatus Status => _status;
 
-		public EndPoint Endpoint => _endPoint;
+		public IPEndPoint Endpoint => _endPoint;
 
 		public void Start()
 		{
@@ -52,7 +52,6 @@ namespace Open.HttpProxy.Listeners
 			}
 			catch (SocketException)
 			{
-				if (_listener == null) return;
 				Stop();
 				throw;
 			}
@@ -63,14 +62,14 @@ namespace Open.HttpProxy.Listeners
 			var socket = new Socket(_endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 			//		  socket.SetIPProtectionLevel(IPProtectionLevel.Unrestricted);
 			socket.Bind(_endPoint);
-			socket.Listen(2147483647);
+			socket.Listen(int.MaxValue);
 			return socket;
 		}
 
 		private void Notify(SocketAsyncEventArgs saea)
 		{
 			var stream = new NetworkStream(saea.AcceptSocket);
-			Events.Raise(ConnectionRequested, this, new ConnectionEventArgs(stream));
+			Events.RaiseAsync(ConnectionRequested, this, new ConnectionEventArgs(stream));
 		}
 
 		private void Listen()

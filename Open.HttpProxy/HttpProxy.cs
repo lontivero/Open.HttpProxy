@@ -42,7 +42,7 @@ namespace Open.HttpProxy
 				var clientConnection = e.Stream;
 
 				Events.Raise(OnClientConnect, this, new ConnectionEventArgs(clientConnection));
-				var session = new Session(clientConnection);
+				var session = new Session(clientConnection, _listener.Endpoint);
 				var stateMachine = StateMachineBuilder.Build();
 				try
 				{

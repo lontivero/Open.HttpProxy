@@ -20,6 +20,12 @@ namespace Open.HttpProxy
 				return Command.Error;
 			}
 
+			if (request.Uri.IsLoopback && request.Uri.Port == ctx.Endpoint.Port)
+			{
+				await ctx.ClientHandler.SendErrorAsync(request.RequestLine.Version, 200, "Open.HttpProxy working", "This is a proxy server man....").WithoutCapturingContext();
+				return Command.Error;
+			}
+
 			if (request.RequestLine.IsVerb("CONNECT"))
 			{
 				return request.Uri.Port != 80
