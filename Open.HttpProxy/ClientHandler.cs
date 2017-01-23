@@ -73,7 +73,6 @@ namespace Open.HttpProxy
 			await sslStream.AuthenticateAsServerAsync(cert, false, SslProtocols.Default, true).WithoutCapturingContext();
 
 			_session.Trace.TraceInformation("Authenticated as server!");
-
 			_session.ClientPipe = new Pipe(sslStream);
 		}
 
@@ -147,7 +146,7 @@ namespace Open.HttpProxy
 		public void Close()
 		{
 			_session.Trace.TraceEvent(TraceEventType.Verbose, 0, "Closing client handler");
-			_pipe.Close();
+			//_pipe.Close();
 		}
 	}
 }

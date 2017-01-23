@@ -145,15 +145,8 @@ namespace Open.HttpProxy
 
 		public static async Task<Enum> FinishAsync(Session ctx)
 		{
-			try
-			{
-				ctx.ClientHandler?.Close();
-				ctx.ServerHandler?.Close();
-			}
-			catch (Exception e)
-			{
-				/* nothing to do*/
-			}
+			ctx.ClientHandler?.Close();
+			ctx.ServerHandler?.Close();
 			return await Task.FromResult(Command.Continue).WithoutCapturingContext();
 		}
 	}

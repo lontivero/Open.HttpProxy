@@ -145,7 +145,7 @@ namespace Open.HttpProxy
 		public void Close()
 		{
 			_session.Trace.TraceEvent(TraceEventType.Verbose, 0, "Closing server handler");
-			_pipe.Close();
+			//_pipe.Close();
 		}
 	}
 

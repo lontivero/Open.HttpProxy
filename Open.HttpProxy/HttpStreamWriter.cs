@@ -58,10 +58,5 @@ namespace Open.HttpProxy
 			var buffer = _encoder.GetBytes(str);
 			await _stream.WriteAsync(buffer, 0, buffer.Length).WithoutCapturingContext();
 		}
-
-		public void Close()
-		{
-			//_stream.Close();
-		}
 	}
 }

@@ -148,10 +148,5 @@ namespace Open.HttpProxy
 			}
 			return array[0];
 		}
-
-		public void Close()
-		{
-			//_stream.Close();
-		}
 	}
 }
