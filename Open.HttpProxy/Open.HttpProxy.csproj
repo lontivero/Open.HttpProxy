@@ -52,8 +52,6 @@
     <Compile Include="CertificateProvider2.cs" />
     <Compile Include="ClientHandler.cs" />
     <Compile Include="Configuration.cs" />
-    <Compile Include="Connection.cs" />
-    <Compile Include="ConnectionStream.cs" />
     <Compile Include="DnsEndPoint.cs" />
     <Compile Include="EventArgs\ConnectionEventArgs.cs" />
     <Compile Include="HttpHeaders.cs" />
@@ -76,7 +74,6 @@
     <Compile Include="StateMachine.cs" />
     <Compile Include="StatusLine.cs" />
     <Compile Include="TraceScope.cs" />
-    <Compile Include="Utils\BlockingPool.cs" />
     <Compile Include="Utils\Events.cs" />
     <Compile Include="Utils\Guard.cs" />
     <Compile Include="Utils\StringExtensions.cs" />

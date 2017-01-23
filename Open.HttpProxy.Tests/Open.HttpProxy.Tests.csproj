@@ -55,6 +55,7 @@
     <Compile Include="CertificateProviderTests.cs" />
     <Compile Include="DnsEndPointTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="TcpListenerTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Open.HttpProxy\Open.HttpProxy.csproj">
