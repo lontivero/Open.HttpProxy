@@ -2,6 +2,7 @@
 using System;
 using System.Diagnostics;
 using System.Net.Sockets;
+using System.Threading.Tasks;
 using Open.HttpProxy.Utils;
 
 namespace Open.HttpProxy
@@ -35,13 +36,18 @@ namespace Open.HttpProxy
 			_listener.Stop();
 		}
 
-		private async void OnConnectionRequested(object sender, ConnectionEventArgs e)
+		private void OnConnectionRequested(object sender, ConnectionEventArgs e)
+		{
+			Task.Run(async () => await HandleSession(e));
+		}
+
+		private async Task HandleSession(ConnectionEventArgs e)
 		{
 			using (new TraceScope(Trace, "Receiving new connection from: {e.Stream.Uri}"))
 			{
 				var clientConnection = e.Stream;
 
-				Events.Raise(OnClientConnect, this, new ConnectionEventArgs(clientConnection));
+				Events.Raise(OnClientConnect, this, e);
 				var session = new Session(clientConnection, _listener.Endpoint);
 				var stateMachine = StateMachineBuilder.Build();
 				try
@@ -58,7 +64,7 @@ namespace Open.HttpProxy
 				}
 				finally
 				{
-					clientConnection?.Close();
+					((NetworkStream) clientConnection)?.Close(1);
 				}
 			}
 		}

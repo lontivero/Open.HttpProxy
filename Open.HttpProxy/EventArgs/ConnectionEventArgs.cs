@@ -1,13 +1,17 @@
 using System.IO;
+using System.Net.Sockets;
 
 namespace Open.HttpProxy.EventArgs
 {
 	public class ConnectionEventArgs : System.EventArgs
 	{
-		public ConnectionEventArgs(Stream stream)
+		public ConnectionEventArgs(Socket socket)
 		{
-			Stream = stream;
+			socket.LingerState = new LingerOption(true, 0);
+			Stream = new NetworkStream(socket, true);
 		}
+
+		public Socket Socket { get; }
 
 		public Stream Stream { get; }
 	}
