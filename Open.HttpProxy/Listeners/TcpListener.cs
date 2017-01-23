@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 
@@ -17,8 +18,9 @@ namespace Open.HttpProxy.Listeners
 	{
 		public event EventHandler<ConnectionEventArgs> ConnectionRequested;
 
-		private static readonly BlockingPool<SocketAsyncEventArgs> ConnectSaeaPool =
-			new BlockingPool<SocketAsyncEventArgs>(() => new SocketAsyncEventArgs());
+		private static readonly ConcurrentQueue<SocketAsyncEventArgs> ConnectSaeaPool = new ConcurrentQueue<SocketAsyncEventArgs>();
+		//BlockingPool<SocketAsyncEventArgs> ConnectSaeaPool =
+		//	new BlockingPool<SocketAsyncEventArgs>(() => new SocketAsyncEventArgs());
 
 		private readonly IPEndPoint _endPoint;
 		private Socket _listener;
@@ -30,7 +32,7 @@ namespace Open.HttpProxy.Listeners
 			Port = port;
 			_status = ListenerStatus.Stopped;
 			_endPoint = new IPEndPoint(IPAddress.Any, port);
-			ConnectSaeaPool.PreAllocate(100);
+//			ConnectSaeaPool.PreAllocate(100);
 		}
 
 		public ListenerStatus Status => _status;
@@ -68,16 +70,19 @@ namespace Open.HttpProxy.Listeners
 
 		private void Notify(SocketAsyncEventArgs saea)
 		{
-			var stream = new NetworkStream(saea.AcceptSocket);
-			Events.RaiseAsync(ConnectionRequested, this, new ConnectionEventArgs(stream));
+			Events.Raise(ConnectionRequested, this, new ConnectionEventArgs(saea.AcceptSocket));
 		}
 
 		private void Listen()
 		{
-			var saea = ConnectSaeaPool.Take();
+			SocketAsyncEventArgs saea;
+			if (!ConnectSaeaPool.TryDequeue(out saea))
+			{
+				saea = new SocketAsyncEventArgs();
+			}
 			saea.AcceptSocket = null;
 			saea.Completed += IoCompleted;
-			if(_status == ListenerStatus.Stopped) return;
+			if (_status == ListenerStatus.Stopped) return;
 
 			var async = _listener.AcceptAsync(saea);
 
@@ -89,7 +94,6 @@ namespace Open.HttpProxy.Listeners
 
 		private void IoCompleted(object sender, SocketAsyncEventArgs saea)
 		{
-			if (_listener != null) Listen();
 			try
 			{
 				if (saea.SocketError == SocketError.Success)
@@ -105,8 +109,10 @@ namespace Open.HttpProxy.Listeners
 			finally
 			{
 				saea.Completed -= IoCompleted;
-				ConnectSaeaPool.Add(saea);
+				ConnectSaeaPool.Enqueue(saea);
 			}
+
+			if (_listener != null) Listen();
 		}
 
 		public void Stop()
