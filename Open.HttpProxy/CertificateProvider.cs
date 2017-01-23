@@ -79,7 +79,6 @@ namespace Open.HttpProxy
 				else
 				{
 					_certServerCache["CN=" + domain] = x509Certificate;
-					Console.WriteLine(" generated & cached");
 					HttpProxy.Trace.TraceInformation($"Certificate for {domain} generated & cached");
 				}
 
@@ -135,7 +134,7 @@ namespace Open.HttpProxy
 
 		public async Task<X509Certificate2> GetCertificateForSubjectAsync(string hostname)
 		{
-			Console.WriteLine($"!!!! CREATING {hostname} cert");
+			//Console.WriteLine($"!!!! CREATING {hostname} cert");
 			return await Task.Run(()=> X509CertificateFactory.IssueCertificate(
 				$"CN={hostname}", CertificateAuthorityCert, null, new [] {KeyPurposeID.IdKPServerAuth}))
 				.WithoutCapturingContext();
