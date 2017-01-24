@@ -128,7 +128,7 @@ namespace Open.HttpProxy
 
 				if (chunkSize > 0)
 				{
-					var readed = await ReadBytesAsync(buffer.Array, readPos, chunkSize).WithoutCapturingContext();
+					var readed = await ReadBytesAsync(buffer.Array, buffer.Offset + readPos, chunkSize).WithoutCapturingContext();
 					readPos += readed;
 				}
 				await ReadLineAsync().WithoutCapturingContext();
