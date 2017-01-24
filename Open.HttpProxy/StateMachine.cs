@@ -25,7 +25,7 @@ namespace Open.HttpProxy
 	{
 		public static async Task RunAsync(Session session)
 		{
-			using (new TraceScope(HttpProxy.Trace, $"Procession session {session.Id}"))
+			using (session.Logger.Enter($"Procession session {session.Id}"))
 			{
 				do
 				{
@@ -44,13 +44,13 @@ namespace Open.HttpProxy
 					break;
 
 				case State.ReceivingHeaders:
-					HttpProxy.Trace.TraceInformation("Receiving Request line and headers");
+					ctx.Logger.Info("Receiving Request line and headers");
 					var handler = ctx.ClientHandler;
 					await handler.ReceiveAsync().WithoutCapturingContext();
 					var request = ctx.Request;
 					if (request?.RequestLine == null)
 					{
-						ctx.Trace.TraceEvent(TraceEventType.Warning, 0, "No request received. We are done with this.");
+						ctx.Logger.Warning("No request received. We are done with this.");
 						return State.Done;
 					}
 
@@ -69,12 +69,12 @@ namespace Open.HttpProxy
 					return State.ReceivingBody;
 
 				case State.ReceivingBody:
-					HttpProxy.Trace.TraceInformation("Receiving Request body");
+					ctx.Logger.Info("Receiving Request body");
 					await ctx.ClientHandler.ReceiveBodyAsync().WithoutCapturingContext();
 					return State.SendingRequestHeaders;
 
 				case State.AuthenticatingClient:
-					HttpProxy.Trace.TraceInformation("Authenticating as a client");
+					ctx.Logger.Info("Authenticating as a client");
 					var uri = ctx.Request.Uri;
 					await ctx.ClientHandler.CreateHttpsTunnelAsync().WithoutCapturingContext();
 					await ctx.EnsureConnectedToServerAsync(uri).WithoutCapturingContext();
@@ -84,7 +84,7 @@ namespace Open.HttpProxy
 					return State.ReceivingHeaders;
 
 				case State.CreatingTunnel:
-					HttpProxy.Trace.TraceInformation("Creating tunnel");
+					ctx.Logger.Info("Creating tunnel");
 					var clientStream = ctx.ClientPipe.Stream;
 					var requestLine = ctx.Request.RequestLine;
 
@@ -99,59 +99,59 @@ namespace Open.HttpProxy
 					return State.Done;
 
 				case State.SendingRequestHeaders:
-					HttpProxy.Trace.TraceInformation("Sending request headers to server");
+					ctx.Logger.Info("Sending request headers to server");
 					await ctx.EnsureConnectedToServerAsync(ctx.Request.Uri).WithoutCapturingContext();
 					await ctx.ServerHandler.ResendRequestAsync().WithoutCapturingContext();
 					return State.ReceivingResponse;
 
 				case State.AuthenticatingServer:
-					HttpProxy.Trace.TraceInformation("Authenticating as a server");
+					ctx.Logger.Info("Authenticating as a server");
 					await ctx.EnsureConnectedToServerAsync(ctx.Request.Uri).WithoutCapturingContext();
 					await ctx.ServerHandler.CreateHttpsTunnelAsync().WithoutCapturingContext();
 					ctx.Response = null;
 					return State.SendingRequestHeaders;
 
 				case State.ReceivingResponse:
-					HttpProxy.Trace.TraceInformation("Receiving response from server");
+					ctx.Logger.Info("Receiving response from server");
 					await ctx.ServerHandler.ReceiveResponseAsync().WithoutCapturingContext();
 					var response = ctx.Response;
 					if (response?.StatusLine == null)
 					{
-						ctx.Trace.TraceEvent(TraceEventType.Warning, 0, "No response received. We are done with this.");
+						ctx.Logger.Warning("No response received. We are done with this.");
 						return State.Done;
 					}
 
 					if (!response.KeepAlive)
 					{
-						ctx.Trace.TraceInformation("No keep-alive from server response. Closing.");
+						ctx.Logger.Info("No keep-alive from server response. Closing.");
 						ctx.ServerHandler.Close();
 					}
 					return State.SendingResponse;
 
 				case State.SendingResponse:
-					HttpProxy.Trace.TraceInformation("Sending response back to client");
+					ctx.Logger.Info("Sending response back to client");
 					await ctx.ClientHandler.ResendResponseAsync().WithoutCapturingContext();
 
 					//if (ctx.IsWebSocketHandshake)
 					if (ctx.Request.Headers.Upgrade != null)
 					{
-						ctx.Trace.TraceEvent(TraceEventType.Verbose, 0, "WebSocket handshake");
+						ctx.Logger.Verbose("WebSocket handshake");
 						return State.UpgradingToWebSocketTunnel;
 					}
 
 					if (!ctx.Request.KeepAlive && !ctx.Response.KeepAlive)
 					{
-						ctx.Trace.TraceEvent(TraceEventType.Verbose, 0, "No keep-alive... closing handler");
+						ctx.Logger.Verbose("No keep-alive... closing handler");
 						ctx.ClientHandler.Close();
 						return State.Done;
 					}
 
-					ctx.Trace.TraceEvent(TraceEventType.Verbose, 0, "keep-alive!");
+					ctx.Logger.Verbose("keep-alive!");
 					await StateMachine.RunAsync(ctx.Clone()).WithoutCapturingContext();
 					return State.Done;
 
 				case State.UpgradingToWebSocketTunnel:
-					HttpProxy.Trace.TraceInformation("pgrading connection to web socket");
+					ctx.Logger.Info("Upgrading connection to web socket");
 					var cStream = ctx.ClientPipe.Stream;
 					await ctx.EnsureConnectedToServerAsync(ctx.Request.Uri).WithoutCapturingContext();
 					var sStream = ctx.ServerPipe.Stream;
@@ -161,6 +161,7 @@ namespace Open.HttpProxy
 
 					await Task.WhenAll(sTask, rTask).WithoutCapturingContext();
 					return State.Done;
+
 				case State.Done:
 					ctx.ClientHandler?.Close();
 					ctx.ServerHandler?.Close();

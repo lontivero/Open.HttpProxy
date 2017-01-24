@@ -3,15 +3,15 @@ using System.Diagnostics;
 
 namespace Open.HttpProxy
 {
-	public class TraceScope : IDisposable
+	class TraceScope : IDisposable
 	{
 		private readonly Guid _oldActivityId;
-		private readonly TraceSource _ts;
+		private readonly Logger _logger;
 		private readonly string _activityName;
 
-		public TraceScope(TraceSource ts, string activityName)
+		public TraceScope(Logger logger, string activityName)
 		{
-			_ts = ts;
+			_logger = logger;
 			_oldActivityId = Trace.CorrelationManager.ActivityId;
 			_activityName = activityName;
 
@@ -19,18 +19,17 @@ namespace Open.HttpProxy
 
 			if (_oldActivityId != Guid.Empty)
 			{
-				ts.TraceTransfer(0, $"New activity... {activityName}", newActivityId);
+				_logger.Transfer($"New activity... {activityName}", newActivityId);
 			}
 			Trace.CorrelationManager.ActivityId = newActivityId;
-			ts.TraceEvent(TraceEventType.Start, 0, activityName);
 		}
 		public void Dispose()
 		{
 			if (_oldActivityId != Guid.Empty)
 			{
-				_ts.TraceTransfer(0, $"back to {_activityName}", _oldActivityId);
+				_logger.Transfer($"back to {_activityName}", _oldActivityId);
 			}
-			_ts.TraceEvent(TraceEventType.Stop, 0, _activityName);
+			_logger.Exit(_activityName);
 			Trace.CorrelationManager.ActivityId = _oldActivityId;
 		}
 	}

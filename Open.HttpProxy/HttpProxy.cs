@@ -17,7 +17,7 @@ namespace Open.HttpProxy
 		public static EventHandler<ConnectionEventArgs> OnClientConnect;
 		public static EventHandler<SessionEventArgs> OnRequest;
 		public static EventHandler<SessionEventArgs> OnResponse;
-		internal static TraceSource Trace = new TraceSource("Open.HttpProxy");
+		internal static Logger Logger = new Logger();
 		internal static readonly BufferAllocator BufferAllocator = new BufferAllocator(new byte[20 * 1024 * 1024]);
 
 		public HttpProxy(int port=8888)
@@ -43,7 +43,7 @@ namespace Open.HttpProxy
 
 		private async Task HandleSession(ConnectionEventArgs e)
 		{
-			using (new TraceScope(Trace, "Receiving new connection from: {e.Stream.Uri}"))
+			using (Logger.Enter($"Receiving new connection from: {e.Socket.RemoteEndPoint}"))
 			{
 				var clientConnection = e.Stream;
 
@@ -55,7 +55,7 @@ namespace Open.HttpProxy
 				}
 				catch (Exception ex)
 				{
-					Trace.TraceData(TraceEventType.Error, 0, ex);
+					Logger.LogData(TraceEventType.Error, ex);
 					await session.ClientHandler.SendErrorAsync(
 						ProtocolVersion.Parse("HTTP/1.1"), 
 						502, "Bad Gateway", ex.ToString())

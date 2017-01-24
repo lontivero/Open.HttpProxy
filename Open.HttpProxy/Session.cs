@@ -45,7 +45,7 @@ namespace Open.HttpProxy
 			return ServerPipe;
 		}
 
-		internal TraceSource Trace => HttpProxy.Trace;
+		internal Logger Logger => HttpProxy.Logger;
 
 		public Session(Stream clientConnection, IPEndPoint endpoint)
 		{

@@ -59,6 +59,7 @@
     <Compile Include="HttpStreamReader.cs" />
     <Compile Include="HttpStreamWriter.cs" />
     <Compile Include="Listeners\TcpListener.cs" />
+    <Compile Include="Logger.cs" />
     <Compile Include="Pipe.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ProtocolVersion.cs" />

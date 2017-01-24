@@ -67,19 +67,19 @@ namespace Open.HttpProxy
 
 				if (_certServerCache.ContainsKey(cn))
 				{
-					HttpProxy.Trace.TraceInformation($"Certificate for {domain} got from cache");
+					HttpProxy.Logger.Info($"Certificate for {domain} got from cache");
 					return _certServerCache[cn];
 				}
 
 				var x509Certificate = await _provider.GetCertificateForSubjectAsync(domain).WithoutCapturingContext();
 				if (x509Certificate == null)
 				{
-					HttpProxy.Trace.TraceEvent(TraceEventType.Error, 0, $"Certificate for {domain} is null");
+					HttpProxy.Logger.Error( $"Certificate for {domain} is null");
 				}
 				else
 				{
 					_certServerCache["CN=" + domain] = x509Certificate;
-					HttpProxy.Trace.TraceInformation($"Certificate for {domain} generated & cached");
+					HttpProxy.Logger.Info($"Certificate for {domain} generated & cached");
 				}
 
 				return x509Certificate;

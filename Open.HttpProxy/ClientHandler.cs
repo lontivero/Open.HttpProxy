@@ -32,26 +32,26 @@ namespace Open.HttpProxy
 
 		public async Task ReceiveAsync()
 		{
-			_session.Trace.TraceInformation("Receiving request line");
+			_session.Logger.Info("Receiving request line");
 
 			var requestLine = await _pipe.Reader.ReadRequestLineAsync().WithoutCapturingContext();
 			if (requestLine == null)
 			{
-				_session.Trace.TraceInformation("No request line received.");
+				_session.Logger.Info("No request line received.");
 				return;
 			}
-			_session.Trace.TraceEvent(TraceEventType.Verbose, 0, requestLine.ToString());
-			_session.Trace.TraceInformation("Receiving request headers");
+			_session.Logger.Verbose(requestLine.ToString());
+			_session.Logger.Info("Receiving request headers");
 
 			var headers = await _pipe.Reader.ReadHeadersAsync().WithoutCapturingContext();
-			_session.Trace.TraceData(TraceEventType.Verbose, 0, headers.ToString());
+			_session.Logger.LogData(TraceEventType.Verbose, headers.ToString());
 
 			_session.Request = new Request(requestLine, headers);
 		}
 
 		public async Task ReceiveBodyAsync()
 		{
-			_session.Trace.TraceInformation("Receiving request body");
+			_session.Logger.Info("Receiving request body");
 
 			var requestLine = _session.Request.RequestLine;
 			if (requestLine.IsVerb("POST") || requestLine.IsVerb("PUT"))
@@ -65,14 +65,14 @@ namespace Open.HttpProxy
 		public async Task CreateHttpsTunnelAsync()
 		{
 			var requestLine = _session.Request.RequestLine;
-			_session.Trace.TraceInformation($"Creating Client Tunnel for {_session.Request.EndPoint.Host}");
+			_session.Logger.Info($"Creating Client Tunnel for {_session.Request.EndPoint.Host}");
 
 			await BuildAndReturnResponseAsync(requestLine.Version, 200, "Connection established").WithoutCapturingContext();
 			var cert = await CertificateProvider.Default.GetCertificateForSubjectAsync(_session.Request.EndPoint.WildcardDomain).WithoutCapturingContext();
 			var sslStream = new SslStream(_session.ClientPipe.Stream, false);
 			await sslStream.AuthenticateAsServerAsync(cert, false, SslProtocols.Default, true).WithoutCapturingContext();
 
-			_session.Trace.TraceInformation("Authenticated as server!");
+			_session.Logger.Info("Authenticated as server!");
 			_session.ClientPipe = new Pipe(sslStream);
 		}
 
@@ -90,10 +90,10 @@ namespace Open.HttpProxy
 
 		public async Task BuildAndReturnResponseAsync(ProtocolVersion version, int code, string description, string body = null, bool closeConnection = false)
 		{
-			using (new TraceScope(_session.Trace, "Creating Client Tunnel"))
+			using (_session.Logger.Enter("Creating Client Tunnel"))
 			{
 				var statusLine = new StatusLine(version, code.ToString(), description);
-				_session.Trace.TraceInformation($"Responding with [{statusLine}]");
+				_session.Logger.Info($"Responding with [{statusLine}]");
 				_session.Response = new Response(
 					statusLine,
 					new HttpHeaders
@@ -115,7 +115,7 @@ namespace Open.HttpProxy
 
 		public async Task ResendResponseAsync()
 		{
-			_session.Trace.TraceInformation("Sending server response back to the client");
+			_session.Logger.Info("Sending server response back to the client");
 			await _pipe.Writer.WriteStatusLineAsync(_session.Response.StatusLine).WithoutCapturingContext();
 			await _pipe.Writer.WriteHeadersAsync(_session.Response.Headers).WithoutCapturingContext();
 			await _pipe.Writer.WriteBodyAsync(_session.Response.Body).WithoutCapturingContext();
@@ -145,7 +145,7 @@ namespace Open.HttpProxy
 
 		public void Close()
 		{
-			_session.Trace.TraceEvent(TraceEventType.Verbose, 0, "Closing client handler");
+			_session.Logger.Verbose("Closing client handler");
 			//_pipe.Close();
 		}
 	}

@@ -8,6 +8,7 @@ namespace Open.HttpProxy.EventArgs
 		public ConnectionEventArgs(Socket socket)
 		{
 			socket.LingerState = new LingerOption(true, 0);
+			Socket = socket;
 			Stream = new NetworkStream(socket, true);
 		}
 
