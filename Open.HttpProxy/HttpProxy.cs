@@ -49,10 +49,9 @@ namespace Open.HttpProxy
 
 				Events.Raise(OnClientConnect, this, e);
 				var session = new Session(clientConnection, _listener.Endpoint);
-				var stateMachine = StateMachineBuilder.Build();
 				try
 				{
-					await stateMachine.RunAsync(session).WithoutCapturingContext();
+					await StateMachine.RunAsync(session).WithoutCapturingContext();
 				}
 				catch (Exception ex)
 				{

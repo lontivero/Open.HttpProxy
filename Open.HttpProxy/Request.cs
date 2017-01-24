@@ -30,18 +30,17 @@ namespace Open.HttpProxy
 				var uri = RequestLine.Uri;
 
 				string scheme;
-				var parts = uri.Split(new [] { "://"}, StringSplitOptions.RemoveEmptyEntries);
-				if (parts.Length >= 2)
+				var io = uri.IndexOf("://", StringComparison.Ordinal);
+				if (io == -1 || io > "https".Length)
 				{
-					scheme = parts[0];
-					uri = parts[1];
+					scheme = IsHttps ? "https" : "http";
 				}
 				else
 				{
-					scheme = IsHttps ? "https" : "http";
-					uri = parts[0];
+					scheme = uri.Substring(0, io);
+					uri = uri.Substring(io+3);
 				}
-				
+
 				string authority=null;
 				if (uri[0] != '/')
 				{
@@ -79,8 +78,8 @@ namespace Open.HttpProxy
 							host = host.TrimEnd('/');
 						else
 						{
-							host = host.Substring(0, cp);
 							port = int.Parse(host.Substring(cp + 1));
+							host = host.Substring(0, cp);
 						}
 					}
 				}
