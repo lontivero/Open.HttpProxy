@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Dynamic;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -33,6 +32,8 @@ namespace Open.HttpProxy
 
 		internal SessionFlag Flags { get; }
 
+		internal State CurrentState { get; set; }
+
 		internal async Task<Pipe> EnsureConnectedToServerAsync(Uri uri)
 		{
 			if (ServerPipe == null)
@@ -53,6 +54,7 @@ namespace Open.HttpProxy
 			ClientPipe = new Pipe(clientConnection);
 			ClientHandler = new ClientHandler(this);
 			Flags = new SessionFlag();
+			CurrentState = State.ReceivingHeaders;
 		}
 
 		private Session(Pipe clientPipe, Pipe serverPipe)
@@ -63,6 +65,7 @@ namespace Open.HttpProxy
 			ServerPipe = serverPipe;
 			ServerHandler = new ServerHandler(this);
 			Flags = new SessionFlag();
+			CurrentState = State.ReceivingHeaders;
 		}
 
 		public Guid Id { get; }
