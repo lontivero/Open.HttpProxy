@@ -47,7 +47,9 @@
     </When>
     <Otherwise>
       <ItemGroup>
-        <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework" />
+        <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework">
+          <Private>False</Private>
+        </Reference>
       </ItemGroup>
     </Otherwise>
   </Choose>
@@ -56,12 +58,21 @@
     <Compile Include="DnsEndPointTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TcpListenerTests.cs" />
+    <Compile Include="HttpStreamReaderTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Open.HttpProxy\Open.HttpProxy.csproj">
       <Project>{ec2393ce-878f-470e-bf3e-b57d033d289c}</Project>
       <Name>Open.HttpProxy</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Data\chunked.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Data\processed.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">
