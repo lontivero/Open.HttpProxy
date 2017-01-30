@@ -28,7 +28,7 @@ namespace Open.HttpProxy.BufferManager
 {
 	public interface IBufferAllocator
 	{
-		Task<ArraySegment<byte>> AllocateAsync(int sizeBytes);
+		ArraySegment<byte> AllocateAsync(int sizeBytes);
 		void Free(ArraySegment<byte> buffer);
 	}
 }

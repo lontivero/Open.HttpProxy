@@ -92,7 +92,7 @@ namespace Open.HttpProxy
 		{
 			if (contentLength > 0)
 			{
-				var buffer = await HttpProxy.BufferAllocator.AllocateAsync(contentLength).WithoutCapturingContext();
+				var buffer = HttpProxy.BufferAllocator.AllocateAsync(contentLength);
 				var readed = await ReadBytesAsync(buffer.Array, buffer.Offset, contentLength).WithoutCapturingContext();
 				var arr = new byte[readed];
 				Buffer.BlockCopy(buffer.Array, buffer.Offset, arr, 0, readed);
@@ -103,7 +103,7 @@ namespace Open.HttpProxy
 
 		public async Task<byte[]> ReadBodyToEndAsync()
 		{
-			var buffer = await HttpProxy.BufferAllocator.AllocateAsync(200*1024);
+			var buffer = HttpProxy.BufferAllocator.AllocateAsync(200*1024);
 			var readPos = 0;
 			int readed;
 			do
@@ -118,7 +118,7 @@ namespace Open.HttpProxy
 
 		public async Task<byte[]> ReadChunckedBodyAsync()
 		{
-			var buffer = await HttpProxy.BufferAllocator.AllocateAsync(200 * 1024).WithoutCapturingContext();
+			var buffer = HttpProxy.BufferAllocator.AllocateAsync(200 * 1024);
 			var readPos = 0;
 			int chunkSize;
 			do

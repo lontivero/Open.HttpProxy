@@ -22,6 +22,7 @@
 // <summary></summary>
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Open.HttpProxy.Utils;
 
@@ -32,33 +33,35 @@ namespace Open.HttpProxy.BufferManager
 		public const int BlockSize = 8 * 1024;
 		private readonly BuddyBufferAllocator _allocator;
 		private readonly byte[] _buffer;
+		private object locker = new object();
 		private readonly AsyncManualResetEvent _event = new AsyncManualResetEvent();
 
 		public BufferAllocator(byte[] buffer)
 		{
 			_buffer = buffer;
 			_allocator = BuddyBufferAllocator.Create(SizeToBlocks(buffer.Length));
+//			_event.Reset();
 		}
 
-		public async Task<ArraySegment<byte>> AllocateAsync(int sizeBytes)
+		public ArraySegment<byte> AllocateAsync(int sizeBytes)
 		{
 			int offset;
 			var blocks = SizeToBlocks(sizeBytes);
-			_event.Reset();
-			while ((offset = AllocateInternal(blocks)) == -1)
+			lock (locker)
 			{
-				await _event.WaitAsync().WithoutCapturingContext();
-			}
+				while ((offset = _allocator.Allocate(blocks)) == -1)
+					Monitor.Wait(locker);
 
-			return new ArraySegment<byte>(_buffer, offset * BlockSize, sizeBytes);
+				return new ArraySegment<byte>(_buffer, offset * BlockSize, sizeBytes);
+			}
 		}
 
 		public void Free(ArraySegment<byte> buffer)
 		{
-			lock (_allocator)
+			lock (locker)
 			{
 				_allocator.Free(buffer.Offset / BlockSize);
-				_event.Set();
+				Monitor.PulseAll(locker);
 			}
 		}
 
