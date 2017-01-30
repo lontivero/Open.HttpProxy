@@ -17,5 +17,10 @@ namespace Open.HttpProxy
 			Reader = new HttpStreamReader(Stream);
 			Writer = new HttpStreamWriter(Stream);
 		}
+
+		public void Close()
+		{
+			Stream.Close();
+		}
 	}
 }
