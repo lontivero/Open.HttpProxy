@@ -23,7 +23,7 @@ namespace Open.HttpProxy
 
 		public bool IsHttps =>  RequestLine != null && RequestLine.IsVerb("CONNECT");
 
-		internal Uri Uri
+		public Uri Uri
 		{
 			get
 			{

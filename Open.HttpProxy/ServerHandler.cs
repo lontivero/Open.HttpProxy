@@ -37,6 +37,7 @@ namespace Open.HttpProxy
 						socket.EndConnect,
 						new IPEndPoint(ipAddress, uri.Port), socket)
 						.WithoutCapturingContext();
+					socket.LingerState = new LingerOption(true, 0);
 					return socket;
 				}
 				catch (SocketException)
@@ -70,7 +71,7 @@ namespace Open.HttpProxy
 			await SendRequestAsync(connectRequest).WithoutCapturingContext();
 			var response = await InternalReceiveResponseAsync().WithoutCapturingContext();
 
-			if (response.StatusLine.Code == "200" && 
+			if (response.StatusLine.Code == HttpStatusCode.Ok && 
 				response.StatusLine.Description.Equals("connection established", StringComparison.OrdinalIgnoreCase))
 			{
 				_session.Logger.Info("Tunnel established with proxy");
@@ -99,6 +100,7 @@ namespace Open.HttpProxy
 		public async Task ReceiveResponseAsync()
 		{
 			_session.Response = await InternalReceiveResponseAsync().WithoutCapturingContext();
+			_session.RaiseResponseReceivedEvent();
 		}
 
 		internal async Task<Response> InternalReceiveResponseAsync()
@@ -118,6 +120,7 @@ namespace Open.HttpProxy
 			_session.Logger.Verbose(headers.ToString());
 
 			var response = new Response(statusLine, headers);
+			_session.RaiseResponseHeadersReceivedEvent();
 
 			if (response.HasBody)
 			{
@@ -144,8 +147,10 @@ namespace Open.HttpProxy
 
 		public void Close()
 		{
+			if (_session.ServerPipe == null) return; 
 			_session.Logger.Verbose("Closing server handler");
-			//_pipe.Close();
+			_session.ServerPipe.Close();
+			_session.ServerPipe = null;
 		}
 	}
 

@@ -46,7 +46,6 @@
     <Compile Include="BufferManager\BufferAllocator.cs" />
     <Compile Include="BufferManager\BufferList.cs" />
     <Compile Include="BufferManager\IBufferAllocator.cs" />
-    <Compile Include="BufferManager\ManualBufferedStream.cs" />
     <Compile Include="CertificateCache.cs" />
     <Compile Include="CertificateProvider.cs" />
     <Compile Include="CertificateProvider2.cs" />
@@ -72,6 +71,7 @@
     <Compile Include="SocketAwaitable.cs" />
     <Compile Include="SslPipe.cs" />
     <Compile Include="StateMachine.cs" />
+    <Compile Include="StatusCode.cs" />
     <Compile Include="StatusLine.cs" />
     <Compile Include="TraceScope.cs" />
     <Compile Include="Utils\Events.cs" />

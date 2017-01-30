@@ -15,8 +15,11 @@ namespace Open.HttpProxy
 	{
 		private readonly TcpListener _listener;
 		public static EventHandler<ConnectionEventArgs> OnClientConnect;
-		public static EventHandler<SessionEventArgs> OnRequest;
-		public static EventHandler<SessionEventArgs> OnResponse;
+
+		public EventHandler<SessionEventArgs> OnRequestHeaders;
+		public EventHandler<SessionEventArgs> OnRequest;
+		public EventHandler<SessionEventArgs> OnResponseHeaders;
+		public EventHandler<SessionEventArgs> OnResponse;
 		internal static Logger Logger = new Logger();
 		internal static readonly BufferAllocator BufferAllocator = new BufferAllocator(new byte[20 * 1024 * 1024]);
 
@@ -48,7 +51,7 @@ namespace Open.HttpProxy
 				var clientConnection = e.Stream;
 
 				Events.Raise(OnClientConnect, this, e);
-				var session = new Session(clientConnection, _listener.Endpoint);
+				var session = new Session(clientConnection, _listener.Endpoint, this);
 				try
 				{
 					await StateMachine.RunAsync(session).WithoutCapturingContext();
@@ -58,7 +61,7 @@ namespace Open.HttpProxy
 					Logger.LogData(TraceEventType.Error, ex);
 					await session.ClientHandler.SendErrorAsync(
 						ProtocolVersion.Parse("HTTP/1.1"), 
-						502, "Bad Gateway", ex.ToString())
+						HttpStatusCode.BadGateway, "Bad Gateway", ex.ToString())
 						.WithoutCapturingContext();
 				}
 				finally

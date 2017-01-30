@@ -23,6 +23,8 @@ namespace Open.HttpProxy
 	public class Session
 	{
 		public IPEndPoint Endpoint { get; set; }
+		public HttpProxy Proxy { get; set; }
+
 		internal ClientHandler ClientHandler { get; set; }
 		internal ServerHandler ServerHandler { get; set; }
 
@@ -47,9 +49,10 @@ namespace Open.HttpProxy
 
 		internal Logger Logger => HttpProxy.Logger;
 
-		public Session(Stream clientConnection, IPEndPoint endpoint)
+		public Session(Stream clientConnection, IPEndPoint endpoint, HttpProxy proxy)
 		{
 			Endpoint = endpoint;
+			Proxy = proxy;
 			Id = Guid.NewGuid();
 			ClientPipe = new Pipe(clientConnection);
 			ClientHandler = new ClientHandler(this);
@@ -57,7 +60,7 @@ namespace Open.HttpProxy
 			CurrentState = State.ReceivingHeaders;
 		}
 
-		private Session(Pipe clientPipe, Pipe serverPipe)
+		private Session(Pipe clientPipe, Pipe serverPipe, HttpProxy proxy)
 		{
 			Id = Guid.NewGuid();
 			ClientPipe = clientPipe;
@@ -66,6 +69,7 @@ namespace Open.HttpProxy
 			ServerHandler = new ServerHandler(this);
 			Flags = new SessionFlag();
 			CurrentState = State.ReceivingHeaders;
+			Proxy = proxy;
 		}
 
 		public Guid Id { get; }
@@ -95,7 +99,27 @@ namespace Open.HttpProxy
 
 		public Session Clone()
 		{
-			return new Session(ClientPipe, ServerPipe);
+			return new Session(ClientPipe, ServerPipe, Proxy);
+		}
+
+		public void RaiseRequestHeadersReceivedEvent()
+		{
+			Events.Raise(Proxy.OnRequestHeaders, this, new SessionEventArgs(this));
+		}
+
+		public void RaiseRequestReceivedEvent()
+		{
+			Events.Raise(Proxy.OnRequest, this, new SessionEventArgs(this));
+		}
+
+		public void RaiseResponseHeadersReceivedEvent()
+		{
+			Events.Raise(Proxy.OnResponseHeaders, this, new SessionEventArgs(this));
+		}
+
+		public void RaiseResponseReceivedEvent()
+		{
+			Events.Raise(Proxy.OnResponse, this, new SessionEventArgs(this));
 		}
 	}
 }

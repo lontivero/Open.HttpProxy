@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Open.HttpProxy.Utils;
 
@@ -8,6 +9,7 @@ namespace Open.HttpProxy
 	enum State
 	{
 		Initial,
+		Final,
 		ReceivingBody,
 		Done,
 		AuthenticatingClient,
@@ -30,7 +32,7 @@ namespace Open.HttpProxy
 				do
 				{
 					session.CurrentState = await DoAsync(session).WithoutCapturingContext();
-				} while (session.CurrentState != State.Done);
+				} while (session.CurrentState != State.Final);
 			}
 		}
 
@@ -53,10 +55,9 @@ namespace Open.HttpProxy
 						ctx.Logger.Warning("No request received. We are done with this.");
 						return State.Done;
 					}
-
 					if (request.Uri.IsLoopback && request.Uri.Port == ctx.Endpoint.Port)
 					{
-						await ctx.ClientHandler.SendErrorAsync(request.RequestLine.Version, 200, "Open.HttpProxy working", "This is a proxy server man....").WithoutCapturingContext();
+						await ctx.ClientHandler.SendErrorAsync(request.RequestLine.Version, HttpStatusCode.Ok, "Open.HttpProxy working", "This is a proxy server man....").WithoutCapturingContext();
 						return State.Done;
 					}
 
@@ -88,7 +89,7 @@ namespace Open.HttpProxy
 					var clientStream = ctx.ClientPipe.Stream;
 					var requestLine = ctx.Request.RequestLine;
 
-					await ctx.ClientHandler.BuildAndReturnResponseAsync(requestLine.Version, 200, "Connection established").WithoutCapturingContext();
+					await ctx.ClientHandler.BuildAndReturnResponseAsync(requestLine.Version, HttpStatusCode.Ok, "Connection established").WithoutCapturingContext();
 					await ctx.EnsureConnectedToServerAsync(ctx.Request.Uri).WithoutCapturingContext();
 					var serverStream = ctx.ServerPipe.Stream;
 
@@ -165,7 +166,7 @@ namespace Open.HttpProxy
 				case State.Done:
 					ctx.ClientHandler?.Close();
 					ctx.ServerHandler?.Close();
-					return State.Done;
+					return State.Final;
 				default:
 					throw new ArgumentOutOfRangeException(nameof(state), state, null);
 			}

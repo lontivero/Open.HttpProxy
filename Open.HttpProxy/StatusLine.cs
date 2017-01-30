@@ -14,17 +14,31 @@ namespace Open.HttpProxy
 			return new StatusLine(version, code, description);
 		}
 
+		public StatusLine(ProtocolVersion version, HttpStatusCode code, string description)
+		: this(version, code.ToString(), description)
+		{ }
+
 		public StatusLine(ProtocolVersion version, string code, string description)
 		{
-			Code = code;
+			CodeString = code;
 			Description = description;
 			Version = version;
 		}
 
-		public string Code
+		public string CodeString
 		{
 			get;
 			set;
+		}
+
+		public HttpStatusCode Code
+		{
+			get
+			{
+				var c = CodeString;
+				var xcode = c.Length == 3 ? c : c.Split('.')[0];
+				return (HttpStatusCode)int.Parse(xcode);
+			}
 		}
 
 		public string Description
@@ -41,7 +55,7 @@ namespace Open.HttpProxy
 
 		public override string ToString()
 		{
-			return $@"{Version} {Code} {Description}";
+			return $@"{Version} {CodeString} {Description}";
 		}
 	}
 }

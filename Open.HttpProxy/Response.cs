@@ -134,15 +134,13 @@ namespace Open.HttpProxy
 
 		protected override bool HasContent()
 		{
-			var c = StatusLine.Code;
-			var xcode = c.Length == 3 ? c : c.Split('.')[0];
-			var code = int.Parse(xcode);
-			return !((code >= 100 && code < 200) || code == 204 || code == 304);
+			var code = StatusLine.Code;
+			return !((code >= HttpStatusCode.Continue && code < HttpStatusCode.Ok) || code == HttpStatusCode.NoContent || code == HttpStatusCode.NotModified);
 		}
 
 		protected override bool VerifyWebSocketHandshake()
 		{
-			return StatusLine.Code == "101" && "websocket".Equals(Headers.Upgrade, StringComparison.OrdinalIgnoreCase);
+			return StatusLine.Code == HttpStatusCode.SwitchingProtocols && "websocket".Equals(Headers.Upgrade, StringComparison.OrdinalIgnoreCase);
 		}
 	}
 }

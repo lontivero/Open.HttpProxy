@@ -47,6 +47,7 @@ namespace Open.HttpProxy
 			_session.Logger.LogData(TraceEventType.Verbose, headers.ToString());
 
 			_session.Request = new Request(requestLine, headers);
+			_session.RaiseRequestHeadersReceivedEvent();
 		}
 
 		public async Task ReceiveBodyAsync()
@@ -60,6 +61,7 @@ namespace Open.HttpProxy
 					? await _pipe.Reader.ReadChunckedBodyAsync().WithoutCapturingContext()
 					: await _pipe.Reader.ReadBodyAsync(_session.Request.Headers.ContentLength.Value).WithoutCapturingContext();
 			}
+			_session.RaiseRequestReceivedEvent();
 		}
 
 		public async Task CreateHttpsTunnelAsync()
@@ -67,7 +69,7 @@ namespace Open.HttpProxy
 			var requestLine = _session.Request.RequestLine;
 			_session.Logger.Info($"Creating Client Tunnel for {_session.Request.EndPoint.Host}");
 
-			await BuildAndReturnResponseAsync(requestLine.Version, 200, "Connection established").WithoutCapturingContext();
+			await BuildAndReturnResponseAsync(requestLine.Version, HttpStatusCode.Ok, "Connection established").WithoutCapturingContext();
 			var cert = await CertificateProvider.Default.GetCertificateForSubjectAsync(_session.Request.EndPoint.WildcardDomain).WithoutCapturingContext();
 			var sslStream = new SslStream(_session.ClientPipe.Stream, false);
 			await sslStream.AuthenticateAsServerAsync(cert, false, SslProtocols.Default, true).WithoutCapturingContext();
@@ -76,7 +78,7 @@ namespace Open.HttpProxy
 			_session.ClientPipe = new Pipe(sslStream);
 		}
 
-		public async Task SendErrorAsync(ProtocolVersion version, int code, string description, string body )
+		public async Task SendErrorAsync(ProtocolVersion version, HttpStatusCode code, string description, string body )
 		{
 			var nbody = $@"<html>
 				<head><title>{code} - {description}</title></head>
@@ -88,11 +90,11 @@ namespace Open.HttpProxy
 			await BuildAndReturnResponseAsync(version, code, description, nbody, true).WithoutCapturingContext();
 		}
 
-		public async Task BuildAndReturnResponseAsync(ProtocolVersion version, int code, string description, string body = null, bool closeConnection = false)
+		public async Task BuildAndReturnResponseAsync(ProtocolVersion version, HttpStatusCode code, string description, string body = null, bool closeConnection = false)
 		{
 			using (_session.Logger.Enter("Creating Client Tunnel"))
 			{
-				var statusLine = new StatusLine(version, code.ToString(), description);
+				var statusLine = new StatusLine(version, code, description);
 				_session.Logger.Info($"Responding with [{statusLine}]");
 				_session.Response = new Response(
 					statusLine,

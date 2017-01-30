@@ -19,18 +19,33 @@ namespace ProxyTest
 			try
 			{
 				httpProxy.Start();
+				httpProxy.OnResponse += (sender, e) =>
+				{
+					try
+					{
+						var request = e.Session.Request;
+						var response = e.Session.Response;
+						var line = request.RequestLine;
+						var status = response.StatusLine.CodeString;
+
+						var url = line.Verb == "CONNECT"
+							? line.Uri
+							: request.Uri.ToString();
+						WriteLineColor(ConsoleColor.White, $"{line.Verb,-7} {status, -7} {url}");
+					}
+					catch (Exception ex)
+					{
+						WriteLineColor(ConsoleColor.Red, ex.ToString());
+					}
+				}; 
 				WriteLineColor(ConsoleColor.Green, "Listening on http://127.0.0.1:8888");
 			}
 			catch (SocketException se)
 			{
-				if (se.SocketErrorCode == SocketError.AddressAlreadyInUse)
-				{
-					WriteLineColor(ConsoleColor.Red, "There is another process listening at the same port!!");
-				}
-				else
-				{
-					WriteLineColor(ConsoleColor.Red, "There was an unexpected error ;(");
-				}
+				WriteLineColor(ConsoleColor.Red,
+					se.SocketErrorCode == SocketError.AddressAlreadyInUse
+						? "There is another process listening at the same port!!"
+						: "There was an unexpected error ;(");
 			}
 			Console.ReadKey();
 		}
