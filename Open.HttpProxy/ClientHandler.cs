@@ -69,6 +69,7 @@ namespace Open.HttpProxy
 			var requestLine = _session.Request.RequestLine;
 			_session.Logger.Info($"Creating Client Tunnel for {_session.Request.EndPoint.Host}");
 
+			var ok = new Ok("Connection established", requestLine.Version);
 			await BuildAndReturnResponseAsync(requestLine.Version, HttpStatusCode.Ok, "Connection established").WithoutCapturingContext();
 			var cert = await CertificateProvider.Default.GetCertificateForSubjectAsync(_session.Request.EndPoint.WildcardDomain).WithoutCapturingContext();
 			var sslStream = new SslStream(_session.ClientPipe.Stream, false);
@@ -92,24 +93,34 @@ namespace Open.HttpProxy
 
 		public async Task BuildAndReturnResponseAsync(ProtocolVersion version, HttpStatusCode code, string description, string body = null, bool closeConnection = false)
 		{
-			using (_session.Logger.Enter("Creating Client Tunnel"))
+			using (_session.Logger.Enter("Creating ??"))
 			{
 				var statusLine = new StatusLine(version, code, description);
 				_session.Logger.Info($"Responding with [{statusLine}]");
-				_session.Response = new Response(
+				var response = new Response(
 					statusLine,
 					new HttpHeaders
 					{
 						{"Date", DateTime.UtcNow.ToString("r")},
 						{"Timestamp", DateTime.UtcNow.ToString("HH:mm:ss.fff")}
 					});
+				if (body != null)
+				{
+					response.Body = response.BodyEncoding.GetBytes(body);
+				}
+				await ReturnResponseAsync(response, closeConnection).WithoutCapturingContext();
+			}
+		}
+
+		public async Task ReturnResponseAsync(Response response, bool closeConnection = false)
+		{
+			using (_session.Logger.Enter("Creating ??"))
+			{
+				_session.Logger.Info($"Responding with [{response.StatusLine}]");
+				_session.Response = response;
 				if (closeConnection)
 				{
 					_session.Response.Headers.Add("Connection", "close");
-				}
-				if (body != null)
-				{
-					_session.Response.Body = _session.Response.BodyEncoding.GetBytes(body);
 				}
 				await ReturnResponse().WithoutCapturingContext();
 			}

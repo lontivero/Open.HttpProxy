@@ -20,7 +20,7 @@ namespace Open.HttpProxy
 
 		public async Task WriteRequestLineAsync(RequestLine requestLine)
 		{
-			await WriteLineAsync(requestLine.ToString2()).WithoutCapturingContext();
+			await WriteLineAsync(requestLine.ToString()).WithoutCapturingContext();
 		}
 		public async Task WriteStatusLineAsync(StatusLine statusLine)
 		{

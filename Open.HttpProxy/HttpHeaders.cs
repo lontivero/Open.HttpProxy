@@ -40,7 +40,7 @@ namespace Open.HttpProxy
 
 		public string Accept => this["Accept"];
 
-		public Uri Referer => new Uri(this["Referer"]);
+		public Uri Referer => !string.IsNullOrEmpty(this["Referer"]) ? new Uri(this["Referer"]) : null;
 
 		public string AcceptCharset => this["Accept-Charset"];
 

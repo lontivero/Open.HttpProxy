@@ -11,8 +11,11 @@ namespace Open.HttpProxy
 
 		public Pipe(Stream stream)
 		{
-			stream.ReadTimeout = 10 * 1000;
-			stream.WriteTimeout = 10 * 1000;
+			if (stream.CanTimeout)
+			{
+				stream.ReadTimeout = 10*1000;
+				stream.WriteTimeout = 10*1000;
+			}
 			Stream = stream;
 			Reader = new HttpStreamReader(Stream);
 			Writer = new HttpStreamWriter(Stream);

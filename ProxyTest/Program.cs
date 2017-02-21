@@ -19,6 +19,20 @@ namespace ProxyTest
 			try
 			{
 				httpProxy.Start();
+
+				httpProxy.OnRequestHeaders += async (sender, e) => 
+				{
+					var request = e.Session.Request;
+					if (request.Uri.Host.Contains("facebook.com"))
+					{
+						e.Session.Abort();
+					}
+					if (!request.RequestLine.IsVerb("CONNECT") && request.Uri.Host.Contains("lavoz.com.ar"))
+					{
+						await e.Session.ReturnResponseAsync(new Ok());
+					}
+				};
+
 				httpProxy.OnResponse += (sender, e) =>
 				{
 					try

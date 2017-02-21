@@ -35,11 +35,5 @@ namespace Open.HttpProxy
 		{
 			return $"{Verb} {Uri} {Version}";
 		}
-
-		public string ToString2()
-		{
-			return $"{Verb} {Uri} {Version}";
-		}
-
 	}
 }

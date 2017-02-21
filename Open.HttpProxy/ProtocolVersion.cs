@@ -2,9 +2,12 @@
 {
 	public class ProtocolVersion
 	{
-		public string Protocol { get; private set; }
-		public int Major { get; private set; }
-		public int Minor { get; private set; }
+		public static readonly ProtocolVersion Http10 = ProtocolVersion.Parse("http/1.0");
+		public static readonly ProtocolVersion Http11 = ProtocolVersion.Parse("http/1.1");
+
+		public string Protocol { get; }
+		public int Major { get; }
+		public int Minor { get; }
 
 		public static ProtocolVersion Parse(string version)
 		{

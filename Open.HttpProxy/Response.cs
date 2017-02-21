@@ -121,7 +121,7 @@ namespace Open.HttpProxy
 		public Response(StatusLine statusLine, HttpHeaders headers, byte[] body = null)
 		{
 			StatusLine = statusLine;
-			Headers = headers;
+			Headers = headers ?? new HttpHeaders();
 			if(body!=null) Body = body;
 		}
 
@@ -141,6 +141,19 @@ namespace Open.HttpProxy
 		protected override bool VerifyWebSocketHandshake()
 		{
 			return StatusLine.Code == HttpStatusCode.SwitchingProtocols && "websocket".Equals(Headers.Upgrade, StringComparison.OrdinalIgnoreCase);
+		}
+	}
+
+	public class Ok : Response
+	{
+		public Ok()
+			: this("OK", ProtocolVersion.Http11)
+		{
+		}
+
+		public Ok(string msg, ProtocolVersion ver)
+			: base(new StatusLine(ver, HttpStatusCode.Ok, msg), null, null)
+		{
 		}
 	}
 }

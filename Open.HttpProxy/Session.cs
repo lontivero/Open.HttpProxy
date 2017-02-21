@@ -60,7 +60,7 @@ namespace Open.HttpProxy
 			CurrentState = State.ReceivingHeaders;
 		}
 
-		private Session(Pipe clientPipe, Pipe serverPipe, HttpProxy proxy)
+		internal Session(Pipe clientPipe, Pipe serverPipe, HttpProxy proxy)
 		{
 			Id = Guid.NewGuid();
 			ClientPipe = clientPipe;
@@ -97,29 +97,44 @@ namespace Open.HttpProxy
 			return await ServerHandler.ConnectToHostAsync(uri).WithoutCapturingContext();
 		}
 
-		public Session Clone()
+		internal Session Clone()
 		{
 			return new Session(ClientPipe, ServerPipe, Proxy);
 		}
 
-		public void RaiseRequestHeadersReceivedEvent()
+		internal void RaiseRequestHeadersReceivedEvent()
 		{
-			Events.Raise(Proxy.OnRequestHeaders, this, new SessionEventArgs(this));
+			Events.Raise(Proxy?.OnRequestHeaders, this, new SessionEventArgs(this));
 		}
 
-		public void RaiseRequestReceivedEvent()
+		internal void RaiseRequestReceivedEvent()
 		{
-			Events.Raise(Proxy.OnRequest, this, new SessionEventArgs(this));
+			Events.Raise(Proxy?.OnRequest, this, new SessionEventArgs(this));
 		}
 
-		public void RaiseResponseHeadersReceivedEvent()
+		internal void RaiseResponseHeadersReceivedEvent()
 		{
-			Events.Raise(Proxy.OnResponseHeaders, this, new SessionEventArgs(this));
+			Events.Raise(Proxy?.OnResponseHeaders, this, new SessionEventArgs(this));
 		}
 
-		public void RaiseResponseReceivedEvent()
+		internal void RaiseResponseReceivedEvent()
 		{
-			Events.Raise(Proxy.OnResponse, this, new SessionEventArgs(this));
+			Events.Raise(Proxy?.OnResponse, this, new SessionEventArgs(this));
+		}
+
+		public void Abort()
+		{
+			CurrentState = State.Aborted;
+		}
+
+		public async Task ReturnResponseAsync(Response response)
+		{
+			if (CurrentState == State.ReceivingHeaders)
+			{
+				await ClientHandler.ReceiveBodyAsync().WithoutCapturingContext();
+			}
+			await ClientHandler.ReturnResponseAsync(response, true);
+			CurrentState = State.Aborted;
 		}
 	}
 }

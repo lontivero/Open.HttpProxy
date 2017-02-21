@@ -18,7 +18,7 @@ namespace Open.HttpProxy.Tests
 		const int connections = 100 * 100;
 
 		[TestMethod]
-		public void x()
+		public void NoLossConnections()
 		{
 			var listener = new Open.HttpProxy.Listeners.TcpListener(8899);
 			listener.ConnectionRequested += Listener_ConnectionRequested;

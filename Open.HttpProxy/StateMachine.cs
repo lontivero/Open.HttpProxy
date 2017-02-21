@@ -20,7 +20,8 @@ namespace Open.HttpProxy
 		ReceivingHeaders,
 		ReceivingResponse,
 		SendingResponse,
-		UpgradingToWebSocketTunnel
+		UpgradingToWebSocketTunnel,
+		Aborted
 	}
 
 	public class StateMachine
@@ -55,12 +56,20 @@ namespace Open.HttpProxy
 						ctx.Logger.Warning("No request received. We are done with this.");
 						return State.Done;
 					}
+					if (request.Headers.Host == null)
+					{
+						ctx.Logger.Warning("No host header received.");
+						return State.Done;
+					}
 					if (request.Uri.IsLoopback && request.Uri.Port == ctx.Endpoint.Port)
 					{
 						await ctx.ClientHandler.SendErrorAsync(request.RequestLine.Version, HttpStatusCode.Ok, "Open.HttpProxy working", "This is a proxy server man....").WithoutCapturingContext();
 						return State.Done;
 					}
-
+					if (ctx.CurrentState == State.Aborted)
+					{
+						return State.Done;
+					}
 					if (request.RequestLine.IsVerb("CONNECT"))
 					{
 						return request.Uri.Port != 80

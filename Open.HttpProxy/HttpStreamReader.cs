@@ -93,10 +93,17 @@ namespace Open.HttpProxy
 			if (contentLength > 0)
 			{
 				var buffer = HttpProxy.BufferAllocator.AllocateAsync(contentLength);
-				var readed = await ReadBytesAsync(buffer.Array, buffer.Offset, contentLength).WithoutCapturingContext();
-				var arr = new byte[readed];
-				Buffer.BlockCopy(buffer.Array, buffer.Offset, arr, 0, readed);
-				return arr;
+				try
+				{
+					var readed = await ReadBytesAsync(buffer.Array, buffer.Offset, contentLength).WithoutCapturingContext();
+					var arr = new byte[readed];
+					Buffer.BlockCopy(buffer.Array, buffer.Offset, arr, 0, readed);
+					return arr;
+				}
+				finally
+				{
+					HttpProxy.BufferAllocator.Free(buffer);
+				}
 			}
 			return new byte[0];
 		}
@@ -106,14 +113,21 @@ namespace Open.HttpProxy
 			var buffer = HttpProxy.BufferAllocator.AllocateAsync(200*1024);
 			var readPos = 0;
 			int readed;
-			do
+			try
 			{
-				readed = await ReadBytesAsync(buffer.Array, readPos, 1024).WithoutCapturingContext();
-				readPos += readed;
-			} while (readed > 0);
-			var arr = new byte[readPos];
-			Buffer.BlockCopy(buffer.Array, buffer.Offset, arr, 0, readPos);
-			return arr;
+				do
+				{
+					readed = await ReadBytesAsync(buffer.Array, readPos, 1024).WithoutCapturingContext();
+					readPos += readed;
+				} while (readed > 0);
+				var arr = new byte[readPos];
+				Buffer.BlockCopy(buffer.Array, buffer.Offset, arr, 0, readPos);
+				return arr;
+			}
+			finally
+			{
+				HttpProxy.BufferAllocator.Free(buffer);
+			}
 		}
 
 		public async Task<byte[]> ReadChunckedBodyAsync()
@@ -121,21 +135,28 @@ namespace Open.HttpProxy
 			var buffer = HttpProxy.BufferAllocator.AllocateAsync(200 * 1024);
 			var readPos = 0;
 			int chunkSize;
-			do
+			try
 			{
-				var chuchkHead = await ReadLineAsync().WithoutCapturingContext();
-				chunkSize = int.Parse(chuchkHead, NumberStyles.HexNumber);
-
-				if (chunkSize > 0)
+				do
 				{
-					var readed = await ReadBytesAsync(buffer.Array, buffer.Offset + readPos, chunkSize).WithoutCapturingContext();
-					readPos += readed;
-				}
-				await ReadLineAsync().WithoutCapturingContext();
-			} while (chunkSize > 0);
-			var arr = new byte[readPos];
-			Buffer.BlockCopy(buffer.Array, buffer.Offset, arr, 0, readPos);
-			return arr;
+					var chuchkHead = await ReadLineAsync().WithoutCapturingContext();
+					chunkSize = int.Parse(chuchkHead, NumberStyles.HexNumber);
+
+					if (chunkSize > 0)
+					{
+						var readed = await ReadBytesAsync(buffer.Array, buffer.Offset + readPos, chunkSize).WithoutCapturingContext();
+						readPos += readed;
+					}
+					await ReadLineAsync().WithoutCapturingContext();
+				} while (chunkSize > 0);
+				var arr = new byte[readPos];
+				Buffer.BlockCopy(buffer.Array, buffer.Offset, arr, 0, readPos);
+				return arr;
+			}
+			finally
+			{
+				HttpProxy.BufferAllocator.Free(buffer);
+			}
 		}
 
 		private async Task<int> ReadByteAsync()
