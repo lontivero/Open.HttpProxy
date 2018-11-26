@@ -1,0 +1,60 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
+    <RootNamespace>Open.HttpProxy</RootNamespace>
+    <Authors>Jazea</Authors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Open.HttpProxy\AsyncManualResetEvent.cs" Link="AsyncManualResetEvent.cs" />
+    <Compile Include="..\Open.HttpProxy\BufferManager\BuddyBufferAllocator.cs" Link="BufferManager\BuddyBufferAllocator.cs" />
+    <Compile Include="..\Open.HttpProxy\BufferManager\BufferAllocator.cs" Link="BufferManager\BufferAllocator.cs" />
+    <Compile Include="..\Open.HttpProxy\BufferManager\BufferList.cs" Link="BufferManager\BufferList.cs" />
+    <Compile Include="..\Open.HttpProxy\BufferManager\IBufferAllocator.cs" Link="BufferManager\IBufferAllocator.cs" />
+    <Compile Include="..\Open.HttpProxy\CertificateCache.cs" Link="CertificateCache.cs" />
+    <Compile Include="..\Open.HttpProxy\CertificateProvider.cs" Link="CertificateProvider.cs" />
+    <Compile Include="..\Open.HttpProxy\CertificateProvider2.cs" Link="CertificateProvider2.cs" />
+    <Compile Include="..\Open.HttpProxy\ClientHandler.cs" Link="ClientHandler.cs" />
+    <Compile Include="..\Open.HttpProxy\Configuration.cs" Link="Configuration.cs" />
+    <Compile Include="..\Open.HttpProxy\DnsEndPoint.cs" Link="DnsEndPoint.cs" />
+    <Compile Include="..\Open.HttpProxy\EventArgs\ConnectionEventArgs.cs" Link="EventArgs\ConnectionEventArgs.cs" />
+    <Compile Include="..\Open.HttpProxy\HttpHeaders.cs" Link="HttpHeaders.cs" />
+    <Compile Include="..\Open.HttpProxy\HttpProxy.cs" Link="HttpProxy.cs" />
+    <Compile Include="..\Open.HttpProxy\HttpStreamReader.cs" Link="HttpStreamReader.cs" />
+    <Compile Include="..\Open.HttpProxy\HttpStreamWriter.cs" Link="HttpStreamWriter.cs" />
+    <Compile Include="..\Open.HttpProxy\Listeners\TcpListener.cs" Link="Listeners\TcpListener.cs" />
+    <Compile Include="..\Open.HttpProxy\Logger.cs" Link="Logger.cs" />
+    <Compile Include="..\Open.HttpProxy\Pipe.cs" Link="Pipe.cs" />
+    <Compile Include="..\Open.HttpProxy\ProtocolVersion.cs" Link="ProtocolVersion.cs" />
+    <Compile Include="..\Open.HttpProxy\Request.cs" Link="Request.cs" />
+    <Compile Include="..\Open.HttpProxy\RequestLine.cs" Link="RequestLine.cs" />
+    <Compile Include="..\Open.HttpProxy\Response.cs" Link="Response.cs" />
+    <Compile Include="..\Open.HttpProxy\ServerHandler.cs" Link="ServerHandler.cs" />
+    <Compile Include="..\Open.HttpProxy\Session.cs" Link="Session.cs" />
+    <Compile Include="..\Open.HttpProxy\SessionEventArgs.cs" Link="SessionEventArgs.cs" />
+    <Compile Include="..\Open.HttpProxy\SocketAwaitable.cs" Link="SocketAwaitable.cs" />
+    <Compile Include="..\Open.HttpProxy\SslPipe.cs" Link="SslPipe.cs" />
+    <Compile Include="..\Open.HttpProxy\StateMachine.cs" Link="StateMachine.cs" />
+    <Compile Include="..\Open.HttpProxy\StatusCode.cs" Link="StatusCode.cs" />
+    <Compile Include="..\Open.HttpProxy\StatusLine.cs" Link="StatusLine.cs" />
+    <Compile Include="..\Open.HttpProxy\TraceScope.cs" Link="TraceScope.cs" />
+    <Compile Include="..\Open.HttpProxy\Utils\Events.cs" Link="Utils\Events.cs" />
+    <Compile Include="..\Open.HttpProxy\Utils\Guard.cs" Link="Utils\Guard.cs" />
+    <Compile Include="..\Open.HttpProxy\Utils\StringExtensions.cs" Link="Utils\StringExtensions.cs" />
+    <Compile Include="..\Open.HttpProxy\Utils\TaskExtensions.cs" Link="Utils\TaskExtensions.cs" />
+    <Compile Include="..\Open.HttpProxy\Utils\TimeExtensions.cs" Link="Utils\TimeExtensions.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="BufferManager\" />
+    <Folder Include="EventArgs\" />
+    <Folder Include="Listeners\" />
+    <Folder Include="Utils\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Portable.BouncyCastle" Version="1.8.4" />
+  </ItemGroup>
+
+</Project>

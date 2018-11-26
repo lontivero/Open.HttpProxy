@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
+# Visual Studio 15
+VisualStudioVersion = 15.0.28010.2048
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Open.HttpProxy", "Open.HttpProxy\Open.HttpProxy.csproj", "{EC2393CE-878F-470E-BF3E-B57D033D289C}"
 EndProject
@@ -27,6 +27,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "Documentat
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Open.HttpProxy.Tests", "Open.HttpProxy.Tests\Open.HttpProxy.Tests.csproj", "{F17DAC78-AA28-4D76-A695-02C607A58D03}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Open.HttpProxy.Core", "Open.HttpProxy.Core\Open.HttpProxy.Core.csproj", "{06736E4A-928A-4E78-B847-1469A9DB4457}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProxyCoreTest", "ProxyCoreTest\ProxyCoreTest.csproj", "{0B7F8443-215B-42FA-985D-A50710199564}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -45,8 +49,19 @@ Global
 		{F17DAC78-AA28-4D76-A695-02C607A58D03}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F17DAC78-AA28-4D76-A695-02C607A58D03}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F17DAC78-AA28-4D76-A695-02C607A58D03}.Release|Any CPU.Build.0 = Release|Any CPU
+		{06736E4A-928A-4E78-B847-1469A9DB4457}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{06736E4A-928A-4E78-B847-1469A9DB4457}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{06736E4A-928A-4E78-B847-1469A9DB4457}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{06736E4A-928A-4E78-B847-1469A9DB4457}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0B7F8443-215B-42FA-985D-A50710199564}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0B7F8443-215B-42FA-985D-A50710199564}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0B7F8443-215B-42FA-985D-A50710199564}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0B7F8443-215B-42FA-985D-A50710199564}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {E436FB18-2959-4222-9AC7-77C37C1C5D69}
 	EndGlobalSection
 EndGlobal
